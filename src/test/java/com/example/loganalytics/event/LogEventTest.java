@@ -9,9 +9,9 @@ import java.util.Map;
 
 public class LogEventTest {
 
-    public static void checkLogEventError(String fieldName, String fieldValue, String feature, String error, Collection<String> errors) {
+    public static void checkLogEventError(String fieldName, String feature, String error, Collection<String> errors) {
         Assert.assertEquals(1, errors.size());
-        String expectedMessage = String.format(LogEvent.FIELD_ERROR_MESSAGE, fieldName, fieldValue, feature, error);
+        String expectedMessage = String.format(LogEvent.FIELD_ERROR_MESSAGE, fieldName, feature, error);
         Assert.assertEquals(expectedMessage, errors.iterator().next());
     }
 
@@ -41,11 +41,10 @@ public class LogEventTest {
     public void testReportError() {
         LogEvent event = new LogEvent();
         String fieldName = "test_field";
-        String fieldValue = "test value";
         String feature = "TEST_FEATURE";
         String error = "this is only a test";
-        event.reportError(fieldName, fieldValue, feature, error);
-        checkLogEventError(fieldName, fieldValue, feature, error, event.getErrors());
+        event.reportError(fieldName, feature, error);
+        checkLogEventError(fieldName, feature, error, event.getErrors());
     }
 
     private void verifyFieldValue(String originalStringValue, LogEvent event) {
@@ -55,6 +54,5 @@ public class LogEventTest {
         Assert.assertEquals(originalStringValue, eventFields.get(LogEvent.ORIGINAL_STRING_FIELD_NAME));
         Assert.assertTrue(event.getErrors().isEmpty());
     }
-
 
 }

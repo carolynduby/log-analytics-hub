@@ -29,7 +29,7 @@ public class GrokParserTest {
         LogEvent event = squidSource.ingestEvent(invalidSquidLogLine);
         verifyOriginalString(event, invalidSquidLogLine);
 
-        LogEventTest.checkLogEventError(LogEvent.ORIGINAL_STRING_FIELD_NAME, LogEvent.ORIGINAL_STRING_FIELD_NAME, GrokParser.GROK_PARSER_FEATURE, GrokParser.GROK_MISMATCH_ERROR_MESSAGE, event.getErrors());
+        LogEventTest.checkLogEventError(LogEvent.ORIGINAL_STRING_FIELD_NAME, GrokParser.GROK_PARSER_FEATURE, GrokParser.GROK_MISMATCH_ERROR_MESSAGE, event.getErrors());
     }
 
     private void verifyOriginalString(LogEvent event, String expectedOriginalString) {

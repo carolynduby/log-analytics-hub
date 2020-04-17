@@ -1,14 +1,18 @@
 package com.example.loganalytics.pipeline;
 
+import com.example.loganalytics.event.LogEvent;
+import com.example.loganalytics.event.LogEventFieldSpecification;
 import com.example.loganalytics.event.serialization.JsonFormat;
-import com.example.loganalytics.event.serialization.LogFormat;
 import com.example.loganalytics.event.serialization.LogFormatException;
+import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceHbase;
 import com.example.loganalytics.log.sources.LogSource;
 import com.example.loganalytics.log.sources.LogSources;
 import com.example.loganalytics.pipeline.config.LogAnalyticsConfig;
+import com.example.loganalytics.pipeline.enrichments.ReferenceDataEnrichmentFunction;
 import com.example.loganalytics.pipeline.generators.SquidGenerator;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.streaming.api.datastream.AsyncDataStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -20,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 public class RawLogParser {
 
@@ -45,6 +50,7 @@ public class RawLogParser {
         LogSources logSources = LogSources.create(params);
         squidSource = logSources.getSource(LogSources.SQUID_SOURCE_NAME);
 
+        EnrichmentReferenceHbase hbaseReferenceDataSource = EnrichmentReferenceHbase.create(params);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -53,28 +59,44 @@ public class RawLogParser {
                 .name("SquidGenerator");
 
         // parse raw event text and convert to structured json
-        SingleOutputStreamOperator<String> logEventStream = rawLogEvents.process(new LogParser());
+        SingleOutputStreamOperator<LogEvent> logEventStream = rawLogEvents.process(new LogParser());
 
-        DataStream<String> parserErrors = logEventStream.getSideOutput(errorOutputTag);
 
-        outputStreamToKafka(logEventStream, kafkaProperties, params, "logs.parsed.topic");
+        LogEventFieldSpecification fieldSpec = new LogEventFieldSpecification("ip_dst_addr", "malicious_ip", Boolean.FALSE);
+        DataStream<LogEvent> enrichedEvents = AsyncDataStream.unorderedWait(logEventStream,
+                new ReferenceDataEnrichmentFunction(hbaseReferenceDataSource, fieldSpec), 50, TimeUnit.SECONDS);
+
+        SingleOutputStreamOperator<String> jsonEvents = enrichedEvents.process(new LogEventToJson());
+        DataStream<String> parserErrors = jsonEvents.getSideOutput(errorOutputTag);
+
+        outputStreamToKafka(jsonEvents, kafkaProperties, params, "logs.parsed.topic");
         outputStreamToKafka(parserErrors, kafkaProperties, params, "logs.errors.topic");
 
         env.execute("Squid log parser");
     }
 
-    private static class LogParser extends ProcessFunction<String, String> {
+    private static class LogParser extends ProcessFunction<String, LogEvent> {
 
         private static final Logger LOG = LoggerFactory.getLogger(LogParser.class);
-        private static final LogFormat<String> logConversion = new JsonFormat();
 
         @Override
-        public void processElement(String logText, Context context, Collector<String> jsonLogCollector) {
+        public void processElement(String logText, Context context, Collector<LogEvent> parsedLogCollector) {
             LOG.info("Processing log {}", logText);
+            parsedLogCollector.collect(squidSource.ingestEvent(logText));
+         }
+    }
+
+    private static class LogEventToJson extends ProcessFunction<LogEvent, String> {
+
+        private static final Logger LOG = LoggerFactory.getLogger(LogEventToJson.class);
+        private static final JsonFormat jsonFormat = new JsonFormat();
+
+        @Override
+        public void processElement(LogEvent logEvent, Context context, Collector<String> jsonLogCollector) {
             try {
-                jsonLogCollector.collect(logConversion.convert(squidSource.ingestEvent(logText)));
+                jsonLogCollector.collect(jsonFormat.convert(logEvent));
             } catch (LogFormatException e) {
-                context.output(errorOutputTag, logText);
+                LOG.error("Unable to convert log {} to json.", logEvent.toString());
             }
         }
     }

@@ -14,7 +14,8 @@ public class SquidGenerator extends LogGenerator {
             "%d.0000    2404 75.133.181.135 TCP_TUNNEL/200 19304 CONNECT cdn.cnn.com:443 - HIER_DIRECT/184.28.183.201 -",
             "%d.0000   5262 75.133.181.135 TCP_TUNNEL/200 4546 CONNECT p.adsymptotic.com:443 - HIER_DIRECT/104.18.102.194 -",
             "%d.0000    7306 75.133.181.135 TCP_TUNNEL/200 3905 CONNECT log.outbrainimg.com:443 - HIER_DIRECT/66.225.223.127 -",
-            "%d.0000   12542 75.133.181.135 TCP_TUNNEL/200 6648 CONNECT ads.pubmatic.com:443 - HIER_DIRECT/23.1.245.5 -"};
+            "%d.0000   12542 75.133.181.135 TCP_TUNNEL/200 6648 CONNECT ads.pubmatic.com:443 - HIER_DIRECT/23.1.245.5 -",
+            "%d.0000   12542 75.133.181.135 TCP_TUNNEL/200 6648 CONNECT www.badsite.com:443 - HIER_DIRECT/1.2.3.4 -"};
 
     public SquidGenerator() {
         super(squidSamples);

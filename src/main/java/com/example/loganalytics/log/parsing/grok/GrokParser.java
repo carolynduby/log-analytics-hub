@@ -27,7 +27,7 @@ public class GrokParser implements LogParser<String> {
         LogEvent event;
         if (eventFields.isEmpty()) {
             event = new LogEvent();
-            event.reportError(LogEvent.ORIGINAL_STRING_FIELD_NAME, "original_string", GROK_PARSER_FEATURE, GROK_MISMATCH_ERROR_MESSAGE);
+            event.reportError(LogEvent.ORIGINAL_STRING_FIELD_NAME, GROK_PARSER_FEATURE, GROK_MISMATCH_ERROR_MESSAGE);
         } else {
             event = new LogEvent(eventFields);
         }

@@ -5,10 +5,12 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.sql.*;
 import java.util.*;
 
-public class EnrichmentReferenceHbase {
+public class EnrichmentReferenceHbase implements EnrichmentReferenceDataSource, Serializable { // should use Flink POJOs instead of serialization
+    private static final long serialVersionUID = 1L;
 
     public static final String HBASE_URL_PROPERTY_NAME = "enrichments.hbaseurl";
     public static final String HBASE_USER_PROPERTY_NAME = "enrichments.hbaseuser";
@@ -69,27 +71,34 @@ public class EnrichmentReferenceHbase {
         }
     }
 
-    public Map<String, Object> getEnrichmentValue(String enrichmentReferenceData, String fieldValue) throws SQLException {
+    @Override
+    public Map<String, Object> lookup(String enrichmentReferenceData, String fieldValue) throws Exception {
         try (Connection connection = DriverManager.getConnection(hbaseJDBCUrl, hbaseConnectionProperties)) {
             Map<String, Object> enrichmentValues = new HashMap<>();
-            LOG.debug("Getting enrichment '{}' for field value '{}'", enrichmentReferenceData, fieldValue);
+            LOG.info("Getting enrichment '{}' for field value '{}'", enrichmentReferenceData, fieldValue);
             try (PreparedStatement lookupEnrichment = connection.prepareStatement(enrichmentLookupQuery)) {
                 lookupEnrichment.setString(1, enrichmentReferenceData);
                 lookupEnrichment.setString(2, fieldValue);
                 try (ResultSet enrichmentResults = lookupEnrichment.executeQuery()) {
+                    LOG.debug("Got results for query '{}' for field value '{}'", enrichmentLookupQuery, fieldValue);
                     while (enrichmentResults.next()) {
                         for (String columnName : enrichmentColumnNames) {
                             Object enrichmentValueObject = enrichmentResults.getObject(columnName);
                             if (enrichmentValueObject != null) {
                                 String enrichmentValue = enrichmentValueObject.toString();
-                                enrichmentValues.put(columnName, enrichmentValue);
-                                LOG.trace("Adding enrichment '{}' = '{}'", columnName, enrichmentValue);
+                                String lowerColumnName = columnName.toLowerCase();
+                                enrichmentValues.put(lowerColumnName, enrichmentValue);
+                                LOG.trace("Adding enrichment '{}' = '{}'", lowerColumnName, enrichmentValue);
                             }
                         }
                     }
                     return enrichmentValues;
                 }
+            } catch (Exception e) {
+                LOG.error(String.format("unable to get enrichment '%s' for field value '%s'", enrichmentReferenceData, fieldValue), e);
+                return enrichmentValues;
             }
         }
     }
+
 }
