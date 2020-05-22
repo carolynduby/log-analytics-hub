@@ -1,14 +1,12 @@
 package com.example.loganalytics.event.serialization;
 
-import com.example.loganalytics.event.LogEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayOutputStream;
 
-public class JsonFormat implements LogFormat<String> {
+public class JsonFormat {
 
-    @Override
-    public String convert(LogEvent event) throws LogFormatException {
+    public String convert(Object event) throws LogFormatException {
         ObjectMapper mapper = new ObjectMapper();
 
         try {

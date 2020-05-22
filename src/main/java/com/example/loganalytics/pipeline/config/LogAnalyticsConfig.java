@@ -8,7 +8,7 @@ import java.util.Properties;
 
 public class LogAnalyticsConfig {
     public static final String KAFKA_PREFIX = "kafka.";
-    private static Logger LOG = LoggerFactory.getLogger(LogAnalyticsConfig.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LogAnalyticsConfig.class);
 
     public static Properties readKafkaProperties(ParameterTool params) {
         Properties properties = new Properties();

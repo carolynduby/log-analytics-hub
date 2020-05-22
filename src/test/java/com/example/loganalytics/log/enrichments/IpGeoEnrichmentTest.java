@@ -1,16 +1,13 @@
 package com.example.loganalytics.log.enrichments;
 
 import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceFiles;
-import com.maxmind.geoip2.DatabaseReader;
-import org.apache.flink.api.java.utils.ParameterTool;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
-public class IpGeoEnrichmentTest {
+public class IpGeoEnrichmentTest extends IpGeoTest {
 
     @Test
     public void testNullCityState() throws Exception {
@@ -22,32 +19,11 @@ public class IpGeoEnrichmentTest {
         testGeoEnrichment("35.168.30.147", "US", "Ashburn", "Virginia", 39.0481, -77.4728);
     }
 
-    @Test(expected = Exception.class)
+    @Test
     public void testUnknownHost() throws Exception {
-        final String badIPAddress = "blahblah.blah";
+        final String badIPAddress = "blah.blah.blah";
         testGeoEnrichment(badIPAddress, null, null, null, null, null);
     }
-
-    /*
-    @Test
-    public void testUnsetField() throws IOException {
-        IpGeoEnrichment geoEnrichment = createGeoEnrichment();
-        LogEvent logEvent = new LogEvent();
-        geoEnrichment.addEnrichment(logEvent, TEST_FIELD_NAME);
-        LogEventTest.checkLogEventError(TEST_FIELD_NAME, "null", GEOCODE_FEATURE, Enrichment.NULL_FIELD_VALUE_ERROR_MESSAGE, logEvent.getErrors());
-    }
-
-    @Test
-    public void testIncorrectFieldType() throws IOException {
-        final IpGeoEnrichment geoEnrichment = createGeoEnrichment();
-        final LogEvent logEvent = new LogEvent();
-        final Integer fieldValueWithBadType = 15;
-        logEvent.setField(TEST_FIELD_NAME, fieldValueWithBadType);
-        geoEnrichment.addEnrichment(logEvent, TEST_FIELD_NAME);
-        final Collection<String> errors = logEvent.getErrors();
-        final String fieldMessage = String.format(Enrichment.FIELD_VALUE_TYPE_INCORRECT_ERROR_MESSAGE, String.class.getSimpleName(), Integer.class.getSimpleName());
-        LogEventTest.checkLogEventError(TEST_FIELD_NAME, fieldValueWithBadType.toString(), GEOCODE_FEATURE, fieldMessage, errors);
-    } */
 
     @Test
     public void testLocalIp() throws Exception {
@@ -66,18 +42,9 @@ public class IpGeoEnrichmentTest {
     }
 
     private IpGeoEnrichment createGeoEnrichment() throws IOException {
-        Map<String, String> paramMap = new HashMap<>();
-        paramMap.put(EnrichmentReferenceFiles.CORE_SITE_PROPERTY_NAME, "core-site.xml");
-        paramMap.put(EnrichmentReferenceFiles.HDFS_SITE_PROPERTY_NAME, "hdfs-site.xml");
-        paramMap.put(EnrichmentReferenceFiles.ENRICHMENT_GEO_PATH_PROPERTY_NAME, "file:///home/carolynduby/maxmind/GeoLite2-City_20200317/GeoLite2-City.mmdb");
-
-
-        ParameterTool params = ParameterTool.fromMap(paramMap);
-        EnrichmentReferenceFiles files = EnrichmentReferenceFiles.create(params);
-        Assert.assertNotNull(files);
-        DatabaseReader geoCityDb = files.getGeoCityDatabase();
-        Assert.assertNotNull(geoCityDb);
+        EnrichmentReferenceFiles files = createEnrichmentReferenceFiles();
 
         return IpGeoEnrichment.create(files);
     }
+
 }

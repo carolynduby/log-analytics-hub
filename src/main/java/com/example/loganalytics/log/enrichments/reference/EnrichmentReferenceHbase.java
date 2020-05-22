@@ -72,7 +72,8 @@ public class EnrichmentReferenceHbase implements EnrichmentReferenceDataSource, 
     }
 
     @Override
-    public Map<String, Object> lookup(String enrichmentReferenceData, String fieldValue) throws Exception {
+    public Map<String, Object> lookup(String enrichmentReferenceData, Object fieldValueObject) throws Exception {
+        String fieldValue = (String)fieldValueObject;
         try (Connection connection = DriverManager.getConnection(hbaseJDBCUrl, hbaseConnectionProperties)) {
             Map<String, Object> enrichmentValues = new HashMap<>();
             LOG.info("Getting enrichment '{}' for field value '{}'", enrichmentReferenceData, fieldValue);

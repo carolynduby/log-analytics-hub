@@ -2,7 +2,6 @@ package com.example.loganalytics.log.sources;
 
 import com.example.loganalytics.event.LogEvent;
 import com.example.loganalytics.event.LogEventFieldSpecification;
-import com.example.loganalytics.log.enrichments.IpGeoEnrichment;
 import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceDataSource;
 import com.example.loganalytics.log.parsing.LogParser;
 import org.slf4j.Logger;
@@ -10,19 +9,18 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class LogSource<INPUT> {
     private static final Logger LOG = LoggerFactory.getLogger(LogSource.class);
 
-    private final String sourceName;
     private final LogParser<INPUT> parser;
     /**
      * an ordered list of enrichments to be applied a source
      */
     private final List<FieldEnrichment> enrichments = new ArrayList<>();
 
-    public LogSource(String sourceName, LogParser<INPUT> parser) {
-        this.sourceName = sourceName;
+    public LogSource(LogParser<INPUT> parser) {
         this.parser = parser;
     }
 
@@ -41,28 +39,40 @@ public class LogSource<INPUT> {
         return event;
     }
 
-    public void configureFieldEnrichment(String fieldName, EnrichmentReferenceDataSource enrichmentReferenceDataSource) {
-        enrichments.add(new FieldEnrichment(new LogEventFieldSpecification(fieldName, IpGeoEnrichment.GEOCODE_FEATURE, false), enrichmentReferenceDataSource));
+    public void configureFieldEnrichment(String fieldName, String feature, EnrichmentReferenceDataSource enrichmentReferenceDataSource) {
+        configureFieldEnrichment(fieldName, feature, enrichmentReferenceDataSource, String.class, null);
+    }
+
+    public void configureFieldEnrichment(String fieldName, String feature, EnrichmentReferenceDataSource enrichmentReferenceDataSource,
+                                         Class<?> fieldType, Predicate<LogEvent> applyEnrichment) {
+        enrichments.add(new FieldEnrichment(new LogEventFieldSpecification(fieldName, feature, false), enrichmentReferenceDataSource, fieldType, applyEnrichment));
     }
 
     private static class FieldEnrichment {
-        LogEventFieldSpecification fieldSpecification;
-        EnrichmentReferenceDataSource enrichmentReferenceDataSource;
+        final LogEventFieldSpecification fieldSpecification;
+        final EnrichmentReferenceDataSource enrichmentReferenceDataSource;
+        final Class<?>   fieldEnrichmentClass;
+        final Predicate<LogEvent> applyEnrichment;
 
-        FieldEnrichment(LogEventFieldSpecification fieldSpecification, EnrichmentReferenceDataSource enrichment) {
+        FieldEnrichment(LogEventFieldSpecification fieldSpecification, EnrichmentReferenceDataSource enrichment, Class<?> fieldEnrichmentClass, Predicate<LogEvent> applyEnrichment) {
             this.fieldSpecification = fieldSpecification;
             this.enrichmentReferenceDataSource = enrichment;
+            this.fieldEnrichmentClass = fieldEnrichmentClass;
+            this.applyEnrichment = applyEnrichment;
         }
 
         void enrichEvent(LogEvent logEvent) {
 
-            String fieldValue = logEvent.getField(fieldSpecification, String.class);
-            try {
-                if (fieldValue != null) {
-                    logEvent.enrich(fieldSpecification, enrichmentReferenceDataSource.lookup(fieldSpecification.getFeatureName(), fieldValue));
+            if (applyEnrichment == null  || applyEnrichment.test(logEvent)) {
+                Object fieldValue = logEvent.getField(fieldSpecification, fieldEnrichmentClass);
+                try {
+                    if (fieldValue != null) {
+                        logEvent.enrich(fieldSpecification, enrichmentReferenceDataSource.lookup(fieldSpecification.getFeatureName(), fieldValue));
+                    }
+                } catch (Exception e) {
+                    logEvent.reportError(fieldSpecification, e.getMessage());
+                    LOG.error(String.format("Error enriching field '%s' with value '%s'", fieldSpecification.getFieldName(), fieldValue), e);
                 }
-            } catch (Exception e) {
-                LOG.error(String.format("Error enriching field '%s' with value '%s'", fieldSpecification.getFieldName(), fieldValue), e);
             }
         }
     }

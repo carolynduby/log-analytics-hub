@@ -1,5 +1,6 @@
 package com.example.loganalytics.pipeline.generators;
 
+@SuppressWarnings("SpellCheckingInspection")
 public class SquidGenerator extends LogGenerator {
 
     private static final String[] squidSamples = new String[]{"%d.000   5265 75.133.181.135 TCP_TUNNEL/200 4532 CONNECT odr.mookie1.com:443 - HIER_DIRECT/35.190.90.30 -",

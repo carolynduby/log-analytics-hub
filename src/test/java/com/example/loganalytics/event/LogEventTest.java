@@ -17,7 +17,7 @@ public class LogEventTest {
 
     @Test
     public void testFieldsWithDefaultConstructor() {
-        final String originalStringValue = "raw log message";
+        final String originalStringValue = "raw log message one";
 
         final LogEvent event = new LogEvent();
         Assert.assertNull(event.getField(LogEvent.ORIGINAL_STRING_FIELD_NAME));
@@ -28,7 +28,7 @@ public class LogEventTest {
 
     @Test
     public void testFieldsWithMapConstructor() {
-        final String originalStringValue = "raw log message";
+        final String originalStringValue = "raw log message two";
         final Map<String, Object> fields = new HashMap<>();
 
         fields.put(LogEvent.ORIGINAL_STRING_FIELD_NAME, originalStringValue);

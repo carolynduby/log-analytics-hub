@@ -12,6 +12,7 @@ import com.maxmind.geoip2.record.Subdivision;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.validator.routines.InetAddressValidator;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -66,12 +67,15 @@ public class IpGeoEnrichment implements EnrichmentReferenceDataSource {
     }
 
     @Override
-    public Map<String, Object> lookup(String enrichmentReferenceData, String ipFieldValue) throws Exception {
+    public Map<String, Object> lookup(String enrichmentReferenceData, Object ipFieldValueObject) throws Exception {
 
         Map<String, Object> geoEnrichments = new HashMap<>();
+        String ipFieldValue = (String) ipFieldValueObject;
         try {
-            InetAddress ipAddress = InetAddress.getByName(ipFieldValue);
-            cityDatabase.tryCity(ipAddress).ifPresent(response -> addFields(geoEnrichments, response));
+            if (InetAddressValidator.getInstance().isValidInet4Address(ipFieldValue)) {
+                InetAddress ipAddress = InetAddress.getByName(ipFieldValue);
+                cityDatabase.tryCity(ipAddress).ifPresent(response -> addFields(geoEnrichments, response));
+            }
             return geoEnrichments;
         } catch (UnknownHostException e) {
             LOG.error(String.format("Unknown host for ip '%s'.", ipFieldValue), e);

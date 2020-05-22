@@ -1,6 +1,5 @@
 package com.example.loganalytics.log.enrichments;
 
-import com.example.loganalytics.event.LogEvent;
 import com.example.loganalytics.event.LogEventFieldSpecification;
 import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceDataSource;
 import lombok.Data;
