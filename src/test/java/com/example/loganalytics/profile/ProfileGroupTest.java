@@ -1,163 +1,123 @@
 package com.example.loganalytics.profile;
 
-import com.example.loganalytics.event.LogEvent;
-import com.example.loganalytics.pipeline.profiles.ProfileEvent;
-import com.google.common.collect.Lists;
+import com.example.loganalytics.event.ProfileEvent;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class ProfileGroupTest {
 
+    private static final String PROFILE_GROUP_NAME = "test_group";
+    private static final String TEST_ENTITY_KEY = "test_key";
+    private static final String TEST_ENTITY_MEASUREMENT = "test_measurement";
+    private static final String NUMERATOR_NAME = "numerator";
+    private static final String DENOMINATOR_NAME = "denominator";
+
+    @AllArgsConstructor
+    @Data
+    static class ProfileGroupTestEvent {
+        private String keyField;
+        private String stringField;
+        private List<String> listField;
+    }
+
     @Test
-    public void testCountDistinct() {
-        String groupName = "test_group";
-        String entityKeyFieldName = "test.key";
-        ProfileGroup profileGroup = new ProfileGroup(groupName, entityKeyFieldName);
+    public void testProfileGroupName() {
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        Assert.assertEquals(PROFILE_GROUP_NAME, profileGroup.getProfileGroupName());
+    }
 
-        Assert.assertEquals(groupName, profileGroup.getProfileGroupName());
-        Assert.assertEquals(entityKeyFieldName, profileGroup.getEntityKeyFieldSpecification().getFieldName());
+    @Test
+    public void testCountDistinctString() {
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        profileGroup.addCountDistinctString(TEST_ENTITY_MEASUREMENT, ProfileGroupTestEvent::getStringField);
 
-        String testFieldName = "test.field";
-        String countDistinctMeasurement = "distinct";
-        profileGroup.addCountDistinct(countDistinctMeasurement, testFieldName, false);
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, "string 1", Collections.emptyList());
+        verifyProfileEvent(profileGroup, TEST_ENTITY_KEY, 1.0);
 
-        String entityKey =  "the key";
-        Map<String, Object> fields = new HashMap<>();
-        fields.put(testFieldName, "string1");
-        addLogEvent(entityKeyFieldName, entityKey, profileGroup, fields);
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, "string 2", Collections.emptyList());
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, "string 2", Collections.emptyList());
+        verifyProfileEvent(profileGroup, TEST_ENTITY_KEY, 2.0);
+    }
 
-        Map<String, Double> expectedMeasurements = new HashMap<>();
-        expectedMeasurements.put(countDistinctMeasurement, 1.0);
+    @Test
+    public void testCountDistinctStringList() {
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        profileGroup.addCountDistinctStringList(TEST_ENTITY_MEASUREMENT, ProfileGroupTestEvent::getListField);
 
-        verifyProfileEvent(profileGroup, entityKey, expectedMeasurements);
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, null, Arrays.asList("string 1", "string 2", "string 2"));
+
+        verifyProfileEvent(profileGroup, TEST_ENTITY_KEY, 2.0);
     }
 
     @Test
     public void testCountIf() {
-        String groupName = "test_group";
-        String entityKeyFieldName = "test.key";
-        ProfileGroup profileGroup = new ProfileGroup(groupName, entityKeyFieldName);
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
 
-        Assert.assertEquals(groupName, profileGroup.getProfileGroupName());
-        Assert.assertEquals(entityKeyFieldName, profileGroup.getEntityKeyFieldSpecification().getFieldName());
+        final String matchingString = "match";
+        profileGroup.addCountIf(TEST_ENTITY_MEASUREMENT, ProfileGroupTestEvent::getStringField,  Predicate.isEqual(matchingString));
 
-        String testFieldName = "test.field";
-        String measurement = "countif";
-        String matchingFieldName = "match";
-        profileGroup.addCountIf(measurement, testFieldName, Predicate.isEqual(matchingFieldName));
+        // event with false predicate does not increment
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, "no match", Collections.emptyList());
+        verifyProfileEvent(profileGroup, TEST_ENTITY_KEY, 0.0);
 
-        // add a log event with predicate = true
-        // increments countif
-        String entityKey =  "the key";
-        Map<String, Object> fields = new HashMap<>();
-        fields.put(testFieldName, matchingFieldName);
-        addLogEvent(entityKeyFieldName, entityKey, profileGroup, fields);
-
-        Map<String, Double> expectedMeasurements = new HashMap<>();
-        expectedMeasurements.put(measurement, 1.0);
-
-        verifyProfileEvent(profileGroup, entityKey, expectedMeasurements);
-
-        // add a log event with predicat = false
-        // does not increment countif
-        fields = new HashMap<>();
-        fields.put(testFieldName, "doesnt match");
-        addLogEvent(entityKeyFieldName, entityKey, profileGroup, fields);
-
-        verifyProfileEvent(profileGroup, entityKey, expectedMeasurements);
+        // event with true predicate increments
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, matchingString, Collections.emptyList());
+        verifyProfileEvent(profileGroup, TEST_ENTITY_KEY, 1.0);
     }
+
 
     @Test
     public void testTopFrequency() {
-        String groupName = "test_group";
-        String entityKeyFieldName = "test.key";
-        ProfileGroup profileGroup = new ProfileGroup(groupName, entityKeyFieldName);
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
 
-        Assert.assertEquals(groupName, profileGroup.getProfileGroupName());
-        Assert.assertEquals(entityKeyFieldName, profileGroup.getEntityKeyFieldSpecification().getFieldName());
+        final String matchingString = "match";
+        profileGroup.addTopFrequency(TEST_ENTITY_MEASUREMENT, ProfileGroupTestEvent::getStringField);
 
-        String testFieldName = "test.field";
-        String measurement = "countif";
-        String matchingFieldName = "match";
-        profileGroup.addTopFrequency(measurement, testFieldName);
+        // add the same string multiple times
+        int topFrequency = 5;
+        for(int count = 0; count < topFrequency; count++) {
+            addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, matchingString, Collections.emptyList());
+            verifyProfileEvent(profileGroup, TEST_ENTITY_KEY,  count + 1.0);
+        }
 
-        // add a log event with predicate = true
-        // increments countif
-        String entityKey =  "the key";
-        Map<String, Object> fields = new HashMap<>();
-        fields.put(testFieldName, matchingFieldName);
-        addLogEvent(entityKeyFieldName, entityKey, profileGroup, fields);
-        addLogEvent(entityKeyFieldName, entityKey, profileGroup, fields);
-
-        Map<String, Double> expectedMeasurements = new HashMap<>();
-        expectedMeasurements.put(measurement, 2.0);
-
-        verifyProfileEvent(profileGroup, entityKey, expectedMeasurements);
+        // add different string, top frequency should not change
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, "no match", Collections.emptyList());
+        verifyProfileEvent(profileGroup, TEST_ENTITY_KEY, (double)topFrequency);
     }
+
 
     @Test
     public void testRatios() {
-        String groupName = "test_group";
-        String entityKeyFieldName = "test.key";
-        ProfileGroup profileGroup = new ProfileGroup(groupName, entityKeyFieldName);
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
 
-        Assert.assertEquals(groupName, profileGroup.getProfileGroupName());
-        Assert.assertEquals(entityKeyFieldName, profileGroup.getEntityKeyFieldSpecification().getFieldName());
+        profileGroup.addCount(NUMERATOR_NAME).
+                addCountDistinctStringList(DENOMINATOR_NAME, ProfileGroupTestEvent::getListField).
+                addRatio(TEST_ENTITY_MEASUREMENT, NUMERATOR_NAME, DENOMINATOR_NAME);
 
-        String testFieldName = "test.field";
-        String testListField = "list.field";
-        String numerator = "numerator";
-        String denominator = "denominator";
-        String ratio = "ratio";
-        profileGroup.addCount(numerator, testFieldName).
-                    addCountDistinct(denominator, testListField, true).
-                    addRatio(ratio, numerator, denominator);
-
-        // verify ratios work before events are added
-        ProfileEvent profileEvent = profileGroup.getProfileEventResult();
-        Assert.assertEquals(0.0, profileEvent.getMeasurements().get(ratio), 0.1);
-        Assert.assertEquals(0.0, profileEvent.getMeasurements().get(numerator), 0.1);
-        Assert.assertEquals(0.0, profileEvent.getMeasurements().get(denominator), 0.1);
-
-        // set the numerator and denominator and verify ratio is calculated correctly
-        String entityKey =  "the key";
-        Map<String, Object> fields = new HashMap<>();
-        fields.put(testFieldName, "string1");
-        fields.put(testListField, Lists.newArrayList("element 1", "element 2"));
-
-        addLogEvent(entityKeyFieldName, entityKey, profileGroup, fields);
-
-        Map<String, Double> expectedMeasurements = new HashMap<>();
-        expectedMeasurements.put(numerator, 1.0);
-        expectedMeasurements.put(denominator, 2.0);
-        expectedMeasurements.put(ratio, 0.5);
-
-        verifyProfileEvent(profileGroup, entityKey, expectedMeasurements);
+       addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, null, Arrays.asList("string 1", "string 2"));
+       verifyRatioProfileEvent(profileGroup, 1.0, 2.0);
     }
+
 
     @Test
     public void testMergeTwoNonEmptyProfileGroups() {
-        String mergedMeasurementName = "merged";
-        ProfileGroup profileGroup1 = createMergeProfileGroup(mergedMeasurementName);
-        ProfileGroup profileGroup2 = createMergeProfileGroup(mergedMeasurementName);
+        ProfileGroup<ProfileGroupTestEvent> profileGroup1 = createMergeProfileGroup();
+        ProfileGroup<ProfileGroupTestEvent> profileGroup2 = createMergeProfileGroup();
         profileGroup1.merge(profileGroup2);
-        ProfileEvent profileEvent = profileGroup1.getProfileEventResult();
-        Assert.assertEquals(2.0, profileEvent.getMeasurements().get(mergedMeasurementName), 0.1);
+        verifyProfileEvent(profileGroup1, TEST_ENTITY_KEY, 2.0);
+        verifyProfileEvent(profileGroup2, TEST_ENTITY_KEY, 1.0);
     }
 
-    private ProfileGroup createMergeProfileGroup(String mergedMeasurementName) {
-        String groupName = "test_group";
-        String entityKeyFieldName = "test.key";
-        String countFieldName = "count.field";
-        ProfileGroup profileGroup = new ProfileGroup(groupName, entityKeyFieldName);
-        profileGroup.addCount(mergedMeasurementName, countFieldName);
-        LogEvent logEvent = new LogEvent();
-        logEvent.setField(countFieldName, "a string value");
-        profileGroup.add(logEvent);
+    private ProfileGroup<ProfileGroupTestEvent> createMergeProfileGroup() {
+
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        profileGroup.addCount(TEST_ENTITY_MEASUREMENT);
+        addEventToProfileGroup(profileGroup, TEST_ENTITY_KEY, "A", Collections.emptyList());
 
         return profileGroup;
     }
@@ -165,43 +125,89 @@ public class ProfileGroupTest {
 
     @Test
     public void testMergeTwoEmptyProfileGroups() {
-        String groupName = "test_group";
-        String entityKeyFieldName = "test.key";
-        ProfileGroup profileGroup1 = new ProfileGroup(groupName, entityKeyFieldName);
-        ProfileGroup profileGroup2 = new ProfileGroup(groupName, entityKeyFieldName);
+
+        ProfileGroup<ProfileGroupTestEvent> profileGroup1 = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        ProfileGroup<ProfileGroupTestEvent> profileGroup2 = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
         profileGroup1.merge(profileGroup2);
         Assert.assertEquals(0, profileGroup1.getMembers().size());
     }
 
-    @Test(expected=IllegalStateException.class)
+    @Test
     public void testRatioNumeratorDoesNotExist() {
-        String profileGroupName = "my_profile_group";
-        String entityKeyName = "key";
-        ProfileGroup profileGroup = new ProfileGroup(profileGroupName, entityKeyName);
-        profileGroup.addRatio("result", "doesnt_exist", "doesnt matter");
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        profileGroup.addRatio(TEST_ENTITY_MEASUREMENT, NUMERATOR_NAME, "doesnt matter");
+        ProfileEvent profileEvent = profileGroup.getProfileEventResult();
+        Collection<String> errors  = profileEvent.getErrors();
+        Assert.assertEquals(1, errors.size());
+        String expectedErrorMessage = String.format(ProfileGroup.RATIO_NUMERATOR_DOES_NOT_EXIST_ERROR_MESSAGE, NUMERATOR_NAME);
+        Assert.assertTrue(errors.iterator().next().endsWith(expectedErrorMessage));
     }
 
-    @Test(expected=IllegalStateException.class)
+
+    @Test
     public void testRatioDenominatorDoesNotExist() {
-        String profileGroupName = "my_profile_group";
-        String entityKeyName = "key";
-        ProfileGroup profileGroup = new ProfileGroup(profileGroupName, entityKeyName);
-        String numeratorFieldName = "numerator";
-        profileGroup.addCount(numeratorFieldName, "key");
-        profileGroup.addRatio("result", numeratorFieldName, "doesnt exist");
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        profileGroup.addCount(NUMERATOR_NAME).
+                addRatio(TEST_ENTITY_MEASUREMENT, NUMERATOR_NAME, DENOMINATOR_NAME);
+        ProfileEvent profileEvent = profileGroup.getProfileEventResult();
+        Collection<String> errors  = profileEvent.getErrors();
+        Assert.assertEquals(1, errors.size());
+        String expectedErrorMessage = String.format(ProfileGroup.RATIO_DENOMINATOR_DOES_NOT_EXIST_ERROR_MESSAGE, DENOMINATOR_NAME);
+        Assert.assertTrue(errors.iterator().next().endsWith(expectedErrorMessage));
     }
 
-    private void addLogEvent(String entityKeyFieldName, String entityKey, ProfileGroup profileGroup,Map<String, Object> fields) {
-        LogEvent logEvent = new LogEvent(fields);
-        logEvent.setField(entityKeyFieldName, entityKey);
+    @Test
+    public void testRatioDivideByZero() {
+        ProfileGroup<ProfileGroupTestEvent> profileGroup = new ProfileGroup<>(PROFILE_GROUP_NAME, ProfileGroupTestEvent::getKeyField);
+        profileGroup.addCount(NUMERATOR_NAME).addCount(DENOMINATOR_NAME).
+                addRatio(TEST_ENTITY_MEASUREMENT, NUMERATOR_NAME, DENOMINATOR_NAME);
+        ProfileEvent profileEvent = profileGroup.getProfileEventResult();
+        Collection<String> errors  = profileEvent.getErrors();
+        Assert.assertEquals(1, errors.size());
+        String expectedErrorMessage = String.format(ProfileGroup.RATIO_DENOMINATOR_IS_ZERO_ERROR_MESSAGE, DENOMINATOR_NAME);
+        Assert.assertTrue(errors.iterator().next().endsWith(expectedErrorMessage));
+    }
+
+    private void addEventToProfileGroup(ProfileGroup<ProfileGroupTestEvent> profileGroup, String entityKey, String stringField, List<String> listField) {
+        ProfileGroupTestEvent logEvent = new ProfileGroupTestEvent(entityKey, stringField, listField);
         profileGroup.add(logEvent);
         Assert.assertEquals(entityKey, profileGroup.getEntityKey());
     }
 
-    private void verifyProfileEvent(ProfileGroup profileGroup, String entityKey, Map<String, Double> expectedMeasurements) {
+    private void verifyProfileEvent(ProfileGroup<ProfileGroupTestEvent> profileGroup, String entityKey, Double expectedMeasurementValue) {
+        Map<String, Object> expectedFields = initFields(PROFILE_GROUP_NAME, TEST_ENTITY_KEY, TEST_ENTITY_MEASUREMENT, expectedMeasurementValue);
         ProfileEvent profileEvent = profileGroup.getProfileEventResult();
-        Assert.assertEquals(expectedMeasurements, profileEvent.getMeasurements());
+        Assert.assertEquals(expectedFields, profileEvent.getFields());
         Assert.assertEquals(entityKey, profileEvent.getEntityKey());
+    }
+
+    private Map<String, Object> initFields(String profileType, String entityKey, String measurementName, Double measurementValue) {
+        Map<String, Object> fields = new HashMap<>();
+
+        fields.put(ProfileEvent.PROFILE_TYPE_FIELD_NAME, profileType);
+        fields.put(ProfileEvent.PROFILE_ENTITY_KEY_FILED_NAME, entityKey);
+        fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(measurementName), measurementValue);
+
+        return fields;
+    }
+
+    private void verifyRatioProfileEvent(ProfileGroup<ProfileGroupTestEvent> profileGroup, Double numerator, Double denominator) {
+        Map<String, Object> expectedFields = initRatioFields(TEST_ENTITY_KEY, TEST_ENTITY_MEASUREMENT, numerator, denominator);
+        ProfileEvent profileEvent = profileGroup.getProfileEventResult();
+        Assert.assertEquals(expectedFields, profileEvent.getFields());
+        Assert.assertEquals(ProfileGroupTest.TEST_ENTITY_KEY, profileEvent.getEntityKey());
+    }
+
+    private Map<String, Object> initRatioFields(String entityKey, String measurementName, Double numerator, Double denominator) {
+        Map<String, Object> fields = new HashMap<>();
+
+        fields.put(ProfileEvent.PROFILE_TYPE_FIELD_NAME, ProfileGroupTest.PROFILE_GROUP_NAME);
+        fields.put(ProfileEvent.PROFILE_ENTITY_KEY_FILED_NAME, entityKey);
+        fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(NUMERATOR_NAME), numerator);
+        fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(DENOMINATOR_NAME), denominator);
+        fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(measurementName), numerator / denominator);
+
+        return fields;
     }
 
 }

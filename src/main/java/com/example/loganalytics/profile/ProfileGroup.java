@@ -1,82 +1,89 @@
 package com.example.loganalytics.profile;
 
-import com.example.loganalytics.event.LogEvent;
-import com.example.loganalytics.event.LogEventFieldSpecification;
-import com.example.loganalytics.pipeline.profiles.ProfileEvent;
+import com.example.loganalytics.event.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
+@ToString
+@EqualsAndHashCode
 @Data
-public class ProfileGroup {
+public class ProfileGroup<T> {
     private static final Logger LOG = LoggerFactory.getLogger(ProfileGroup.class);
+    public static final String RATIO_NUMERATOR_DOES_NOT_EXIST_ERROR_MESSAGE = "Ratio numerator %s does not exist.";
+    public static final String RATIO_DENOMINATOR_DOES_NOT_EXIST_ERROR_MESSAGE = "Ratio denominator %s does not exist.";
+    public static final String RATIO_DENOMINATOR_IS_ZERO_ERROR_MESSAGE = "Ratio denominator %s is zero.";
 
     private String profileGroupName;
-    private LogEventFieldSpecification entityKeyFieldSpecification;
+    private Function<T,String> entityKeyFieldAccessor;
     private String entityKey = "global";
-    private List<Profile> members = new ArrayList<>();
+    private List<ProfileAccumulator<T>> members = new ArrayList<>();
     private List<ProfileRatioResult> ratios = new ArrayList<>();
 
-    public ProfileGroup(String profileGroupName, String entityKeyFieldName) {
+    public ProfileGroup(String profileGroupName, Function<T, String> entityKeyFieldAccessor) {
         this.profileGroupName = profileGroupName;
-        this.entityKeyFieldSpecification = new LogEventFieldSpecification(entityKeyFieldName, profileGroupName, false);
+        this.entityKeyFieldAccessor = entityKeyFieldAccessor;
     }
 
-    public void addMember(Profile profile) {
-        members.add(profile);
-    }
-
-    public ProfileGroup addCountDistinct(String resultName, String fieldName, boolean isMultivalued) {
-        CountDistinctAccumulator accumulator = new CountDistinctAccumulator();
-        addProfile(resultName, fieldName, accumulator, isMultivalued);
+    public ProfileGroup<T> addCountDistinctStringList(String resultName, Function<T, List<String>> fieldAccessor) {
+        members.add(new CountDistinctStringListAccumulator<>(resultName, fieldAccessor));
 
         return this;
     }
 
-    public ProfileGroup addCountIf(String resultName, String fieldName, Predicate<String> countPredicate) {
-        CountIfProfileAccumulator accumulator = new CountIfProfileAccumulator(countPredicate);
-        addProfile(resultName, fieldName, accumulator, false);
+    public ProfileGroup<T> addCountDistinctString(String resultName, Function<T, String> fieldAccessor) {
+        members.add(new CountDistinctStringAccumulator<>(resultName, fieldAccessor));
 
         return this;
     }
 
-    public ProfileGroup addCount(String resultName, String fieldName) {
-        CountProfileAccumulator accumulator = new CountProfileAccumulator();
-        addProfile(resultName, fieldName, accumulator, false);
+    public ProfileGroup<T> addCountIf(String resultName, Function<T, String> fieldAccessor, Predicate<String> countPredicate) {
+        members.add(new CountIfProfileAccumulator<>(resultName, fieldAccessor, countPredicate));
 
         return this;
     }
 
-    public ProfileGroup addTopFrequency(String resultName, String fieldName) {
-        TopFrequencyAccumulator accumulator = new TopFrequencyAccumulator();
-        addProfile(resultName, fieldName, accumulator, false);
+    public ProfileGroup<T> addCount(String resultName) {
+        members.add(new CountProfileAccumulator<>(resultName));
 
         return this;
     }
 
-    public ProfileGroup addRatio(String resultName, String numeratorProfileName, String denominatorProfileName) {
-        Profile numerator = members.stream().filter(profile -> profile.getResultName().equals(numeratorProfileName)).findFirst().
-                orElseThrow(() -> new IllegalStateException(String.format("Ratio result %s.%s is not defined", this.profileGroupName, numeratorProfileName)));
-        Profile denominator = members.stream().filter(profile -> profile.getResultName().equals(denominatorProfileName)).findFirst().
-                orElseThrow(() -> new IllegalStateException(String.format("Ratio result %s.%s is not defined", this.profileGroupName, denominatorProfileName)));
-
-        ratios.add(new ProfileRatioResult(resultName, numerator, denominator));
+    public ProfileGroup<T> addMaximum(String resultName, Function<T, Double> fieldAccessor) {
+        members.add(new MaxProfileAccumulator<>(resultName, fieldAccessor));
 
         return this;
     }
 
-    private void addProfile(String resultName, String fieldName, ProfileAccumulator accumulator, boolean isMultivalued) {
-        LogEventFieldSpecification fieldSpecification = new LogEventFieldSpecification(fieldName, profileGroupName, false);
-        if (isMultivalued) {
-            addMember(new MultiValueProfile(resultName, fieldSpecification, accumulator));
-        } else {
-            addMember(new SingleValueProfile(resultName, fieldSpecification, accumulator));
+    public ProfileGroup<T> addTopFrequency(String resultName, Function<T, String> fieldAccessor) {
+        members.add(new TopFrequencyAccumulator<>(resultName, fieldAccessor));
+
+        return this;
+    }
+
+    public ProfileGroup<T> addRatio(String resultName, String numeratorProfileName, String denominatorProfileName) {
+        ratios.add(new ProfileRatioResult(resultName, numeratorProfileName, denominatorProfileName));
+
+        return this;
+    }
+
+    public Double getMemberResult(String name) {
+
+        Optional<ProfileAccumulator<T>> accumulator = members.stream().filter(profile -> profile.getResultName().equals(name)).findFirst();
+        Double result = null;
+        if (accumulator.isPresent()) {
+            result = accumulator.get().getResult();
         }
+        return result;
     }
 
     public String getProfileGroupName() {
@@ -87,25 +94,25 @@ public class ProfileGroup {
         return entityKey;
     }
 
-    public void add(LogEvent logEvent) {
-        LOG.debug("Adding to group {} event {}", profileGroupName, logEvent.toString());
-        String entityKeyFieldValue = logEvent.getField(entityKeyFieldSpecification, String.class);
+    public void add(T event) {
+        LOG.debug("Adding to group {} event {}", profileGroupName, event.toString());
+        String entityKeyFieldValue = entityKeyFieldAccessor.apply(event);
         if (entityKeyFieldValue != null) {
             entityKey = entityKeyFieldValue;
         }
-        for(Profile profile : members) {
-            profile.add(logEvent);
+        for(ProfileAccumulator<T> profile : members) {
+            profile.add(event);
         }
     }
 
-    public void merge(ProfileGroup other) {
+    public void merge(ProfileGroup<T> other) {
         if (this != other) {
-            Iterator<Profile> thisMembers = members.iterator();
-            Iterator<Profile> otherMembers = other.members.iterator();
+            Iterator<ProfileAccumulator<T>> thisMembers = members.iterator();
+            Iterator<ProfileAccumulator<T>> otherMembers = other.members.iterator();
 
             while (thisMembers.hasNext() && otherMembers.hasNext()) {
-                Profile thisProfile = thisMembers.next();
-                Profile otherProfile = otherMembers.next();
+                ProfileAccumulator<T> thisProfile = thisMembers.next();
+                ProfileAccumulator<T> otherProfile = otherMembers.next();
                 thisProfile.merge(otherProfile);
             }
         }
@@ -114,14 +121,35 @@ public class ProfileGroup {
     public ProfileEvent getProfileEventResult() {
         LOG.info("Getting result for profileGroup {}.{}",profileGroupName, entityKey);
         ProfileEvent profileEvent = new ProfileEvent(profileGroupName, entityKey);
-        for(Profile profile : members) {
+
+        for(ProfileAccumulator<T> profile : members) {
             profileEvent.setMeasurement(profile.getResultName(), profile.getResult());
         }
 
         for(ProfileRatioResult ratio : ratios) {
-            profileEvent.setMeasurement(ratio.getResultName(), ratio.getResult());
+            addRatioToProfileEvent(profileEvent, ratio);
         }
 
         return profileEvent;
     }
+
+    private void addRatioToProfileEvent(ProfileEvent profileEvent, ProfileRatioResult ratio) {
+        Double numeratorResult = getMemberResult(ratio.getNumerator());
+        Double denominatorResult = getMemberResult(ratio.getDenominator());
+        String ratioName = ratio.getResultName();
+
+        if (numeratorResult == null) {
+            profileEvent.reportError(ratioName, profileGroupName, String.format(RATIO_NUMERATOR_DOES_NOT_EXIST_ERROR_MESSAGE, ratio.getNumerator()));
+        } else if (denominatorResult == null) {
+            profileEvent.reportError(ratioName, profileGroupName, String.format(RATIO_DENOMINATOR_DOES_NOT_EXIST_ERROR_MESSAGE, ratio.getDenominator()));
+        } else {
+            if (denominatorResult == 0.0) {
+                profileEvent.reportError(ratioName, profileGroupName, String.format(RATIO_DENOMINATOR_IS_ZERO_ERROR_MESSAGE, ratio.getDenominator()));
+            } else {
+                profileEvent.setMeasurement(ratioName, numeratorResult / denominatorResult);
+            }
+        }
+    }
+
+
 }

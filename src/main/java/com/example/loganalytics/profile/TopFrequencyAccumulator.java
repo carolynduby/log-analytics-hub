@@ -1,21 +1,36 @@
 package com.example.loganalytics.profile;
 
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.apache.datasketches.frequencies.ErrorType;
 import org.apache.datasketches.frequencies.ItemsSketch;
 
-public class TopFrequencyAccumulator implements ProfileAccumulator {
+import java.util.function.Function;
+
+@ToString(callSuper=true)
+@EqualsAndHashCode(callSuper = true)
+public class TopFrequencyAccumulator<T> extends ProfileAccumulator<T> {
 
     private final ItemsSketch<String> itemsSketch = new ItemsSketch<>(32);
+    private final Function<T, String> fieldAccessor;
 
-    @Override
-    public void add(String value) {
-        itemsSketch.update(value);
+    public TopFrequencyAccumulator(String resultName, Function<T, String> fieldAccessor) {
+        super(resultName);
+        this.fieldAccessor = fieldAccessor;
     }
 
     @Override
-    public void merge(ProfileAccumulator other) {
-        if (other instanceof TopFrequencyAccumulator) {
-            itemsSketch.merge(((TopFrequencyAccumulator) other).itemsSketch);
+    public void add(T logEvent) {
+        String fieldValue = fieldAccessor.apply(logEvent);
+        if (fieldValue != null) {
+            itemsSketch.update(fieldValue);
+        }
+    }
+
+    @Override
+    public void merge(ProfileAccumulator<T> other) {
+        if (this != other && other instanceof TopFrequencyAccumulator) {
+            itemsSketch.merge(((TopFrequencyAccumulator<T>) other).itemsSketch);
         }
     }
 

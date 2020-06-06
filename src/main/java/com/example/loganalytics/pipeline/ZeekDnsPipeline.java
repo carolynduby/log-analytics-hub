@@ -1,6 +1,7 @@
 package com.example.loganalytics.pipeline;
 
 import com.example.loganalytics.event.LogEvent;
+import com.example.loganalytics.event.NetworkEvent;
 import com.example.loganalytics.event.serialization.JsonFormat;
 import com.example.loganalytics.event.serialization.LogFormatException;
 import com.example.loganalytics.log.sources.LogSource;
@@ -8,9 +9,10 @@ import com.example.loganalytics.log.sources.LogSources;
 import com.example.loganalytics.pipeline.config.LogAnalyticsConfig;
 import com.example.loganalytics.pipeline.profiles.LogEventFieldKeySelector;
 import com.example.loganalytics.pipeline.profiles.LogEventTimestampAssigner;
-import com.example.loganalytics.pipeline.profiles.ProfileEvent;
-import com.example.loganalytics.pipeline.profiles.dns.DnsFingerprintAggregator;
-import com.example.loganalytics.pipeline.profiles.dns.DnsHourlyProfileAggregator;
+import com.example.loganalytics.event.ProfileEvent;
+import com.example.loganalytics.pipeline.profiles.dns.DnsMinuteFingerprintAggregator;
+import com.example.loganalytics.pipeline.profiles.dns.DnsHourProfileAggregator;
+import com.example.loganalytics.profile.ProfileGroup;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -73,16 +75,14 @@ public class ZeekDnsPipeline {
        // DataStream<LogEvent> enrichedEvents = AsyncDataStream.unorderedWait(logEventStream,
        //         new ReferenceDataEnrichmentFunction(hbaseReferenceDataSource, fieldSpec), 50, TimeUnit.SECONDS).assignTimestampsAndWatermarks(new LogEventTimestampAssigner(Time.seconds(10)));
 
-        DataStream<ProfileEvent> dnsProfileEvents = enrichedEvents.keyBy(new LogEventFieldKeySelector(LogEvent.IP_SRC_ADDR_FIELD)).window(TumblingEventTimeWindows.of(Time.minutes(1))).aggregate(new DnsFingerprintAggregator());
-        DataStream<ProfileEvent> hourlyEvents = dnsProfileEvents.keyBy(ProfileEvent::getEntityKey).window(TumblingEventTimeWindows.of(Time.minutes(5))).aggregate(new DnsHourlyProfileAggregator());
-        DataStream<String> jsonDnsProfileEvents = dnsProfileEvents.process(new EventToJson<>());
+        DataStream<ProfileGroup<LogEvent>> dnsProfileEvents = enrichedEvents.keyBy(new LogEventFieldKeySelector(NetworkEvent.IP_SRC_ADDR_FIELD)).window(TumblingEventTimeWindows.of(Time.minutes(1))).aggregate(new DnsMinuteFingerprintAggregator());
+        DataStream<ProfileEvent> hourlyEvents = dnsProfileEvents.keyBy(ProfileGroup::getEntityKey).window(TumblingEventTimeWindows.of(Time.minutes(5))).aggregate(new DnsHourProfileAggregator());
 
         SingleOutputStreamOperator<String> jsonEnrichedEvents = enrichedEvents.process(new EventToJson<>());
         DataStream<String> parserErrors = jsonEnrichedEvents.getSideOutput(errorOutputTag);
 
         outputStreamToKafka(jsonEnrichedEvents, kafkaProperties, params, "logs.parsed.topic");
         outputStreamToKafka(parserErrors, kafkaProperties, params, "logs.errors.topic");
-        outputStreamToKafka(jsonDnsProfileEvents, kafkaProperties, params, "profiles.topic");
         outputStreamToKafka(hourlyEvents.process(new EventToJson<>()), kafkaProperties, params, "profiles.topic");
 
         env.execute("Zeek log parser");

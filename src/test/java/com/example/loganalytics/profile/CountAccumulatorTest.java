@@ -5,9 +5,10 @@ import org.junit.Test;
 
 public class CountAccumulatorTest {
 
+    private static final String TEST_RESULT_NAME = "test_result";
     @Test
     public void testCount() {
-        CountProfileAccumulator accumulator = new CountProfileAccumulator();
+        CountProfileAccumulator<String> accumulator = new CountProfileAccumulator<>(TEST_RESULT_NAME);
 
         Assert.assertEquals(0.0, accumulator.getResult(), 0.1);
 
@@ -23,8 +24,8 @@ public class CountAccumulatorTest {
 
     @Test
     public void testMerge() {
-        CountProfileAccumulator accumulator1 = new CountProfileAccumulator();
-        CountProfileAccumulator accumulator2 = new CountProfileAccumulator();
+        CountProfileAccumulator<String> accumulator1 = new CountProfileAccumulator<>(TEST_RESULT_NAME);
+        CountProfileAccumulator<String> accumulator2 = new CountProfileAccumulator<>(TEST_RESULT_NAME);
 
         Assert.assertEquals(0.0, accumulator1.getResult(), 0.1);
         Assert.assertEquals(0.0, accumulator2.getResult(), 0.1);

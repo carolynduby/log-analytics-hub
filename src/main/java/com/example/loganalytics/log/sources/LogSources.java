@@ -1,7 +1,8 @@
 package com.example.loganalytics.log.sources;
 
-import com.example.loganalytics.event.DnsRequest;
+import com.example.loganalytics.event.DnsRequestEvent;
 import com.example.loganalytics.event.LogEvent;
+import com.example.loganalytics.event.NetworkEvent;
 import com.example.loganalytics.log.enrichments.FilterListEnrichment;
 import com.example.loganalytics.log.enrichments.IpCityCountrySetEnrichment;
 import com.example.loganalytics.log.enrichments.IpGeoEnrichment;
@@ -48,12 +49,12 @@ public class LogSources {
 
         LogSource<String> squidSource = new LogSource<>(new GrokParser(squidExpName, grokMap));
         sources.put(SQUID_SOURCE_NAME, squidSource);
-        squidSource.configureFieldEnrichment(LogEvent.IP_DST_ADDR_FIELD, IpGeoEnrichment.GEOCODE_FEATURE, ipGeoEnrichment);
+        squidSource.configureFieldEnrichment(NetworkEvent.IP_DST_ADDR_FIELD, IpGeoEnrichment.GEOCODE_FEATURE, ipGeoEnrichment);
 
     }
 
     private final Predicate<LogEvent> dnsQueryIsDomainName = logEvent -> {
-        String queryType = (String)logEvent.getField(DnsRequest.DNS_QUERY_TYPE);
+        String queryType = (String)logEvent.getField(DnsRequestEvent.DNS_QUERY_TYPE);
         return (queryType != null && !queryType.isEmpty() &&
                 !queryType.equals("SRV") && !queryType.equals("PTR") && !queryType.equals("URI") &&
                 !queryType.equals("SOA"));
@@ -62,26 +63,26 @@ public class LogSources {
     private void createZeekParser(IpCityCountrySetEnrichment ipCityCountrySetEnrichment) {
 
         Map<String, String> fieldRename = new HashMap<>();
-        fieldRename.put("dns[\\\"id.orig_h\\\"]", LogEvent.IP_SRC_ADDR_FIELD);
-        fieldRename.put("dns[\\\"id.orig_p\\\"]", LogEvent.IP_SRC_PORT_FIELD);
-        fieldRename.put("dns[\\\"id.resp_h\\\"]", LogEvent.IP_DST_ADDR_FIELD);
-        fieldRename.put("dns[\\\"id.resp_p\\\"]", LogEvent.IP_DST_PORT_FIELD);
+        fieldRename.put("dns[\\\"id.orig_h\\\"]", NetworkEvent.IP_SRC_ADDR_FIELD);
+        fieldRename.put("dns[\\\"id.orig_p\\\"]", NetworkEvent.IP_SRC_PORT_FIELD);
+        fieldRename.put("dns[\\\"id.resp_h\\\"]", NetworkEvent.IP_DST_ADDR_FIELD);
+        fieldRename.put("dns[\\\"id.resp_p\\\"]", NetworkEvent.IP_DST_PORT_FIELD);
         fieldRename.put("dns.ts", LogEvent.TIMESTAMP_FIELD);
 
         Map<String, Function<Object, Object>> fieldTypeConversions = new HashMap<>();
-        fieldTypeConversions.put(LogEvent.IP_SRC_PORT_FIELD, TypeConversion.bigDecimalToLong);
-        fieldTypeConversions.put(LogEvent.IP_DST_PORT_FIELD, TypeConversion.bigDecimalToLong);
+        fieldTypeConversions.put(NetworkEvent.IP_SRC_PORT_FIELD, TypeConversion.bigDecimalToLong);
+        fieldTypeConversions.put(NetworkEvent.IP_DST_PORT_FIELD, TypeConversion.bigDecimalToLong);
         fieldTypeConversions.put(LogEvent.TIMESTAMP_FIELD, TypeConversion.bigDecimalToEpoch);
 
         LogSource<String> zeekSource = new LogSource<>(new JsonParser(fieldRename, fieldTypeConversions));
         sources.put(ZEEK_SOURCE_NAME, zeekSource);
 
-        zeekSource.configureFieldEnrichment(DnsRequest.DNS_QUERY, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN,
+        zeekSource.configureFieldEnrichment(DnsRequestEvent.DNS_QUERY, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN,
                 EnrichmentReferenceDomainTransformations.domainBreakdown, String.class, dnsQueryIsDomainName);
-        FilterListEnrichment<String> getIps = new FilterListEnrichment<>(DnsRequest.DNS_FILTERED_IP_ENDING, o -> InetAddressValidator.getInstance().isValidInet4Address(o));
-        zeekSource.configureFieldEnrichment(DnsRequest.DNS_ANSWERS, FilterListEnrichment.FILTER_FEATURE_NAME, getIps,
+        FilterListEnrichment<String> getIps = new FilterListEnrichment<>(DnsRequestEvent.DNS_FILTERED_IP_ENDING, o -> InetAddressValidator.getInstance().isValidInet4Address(o));
+        zeekSource.configureFieldEnrichment(DnsRequestEvent.DNS_ANSWERS, FilterListEnrichment.FILTER_FEATURE_NAME, getIps,
                 List.class, null);
-        zeekSource.configureFieldEnrichment(DnsRequest.DNS_IP_ANSWERS, IpCityCountrySetEnrichment.CITY_COUNTRY_FEATURE_NAME, ipCityCountrySetEnrichment,
+        zeekSource.configureFieldEnrichment(DnsRequestEvent.DNS_IP_ANSWERS, IpCityCountrySetEnrichment.CITY_COUNTRY_FEATURE_NAME, ipCityCountrySetEnrichment,
                 List.class, null);
     }
 

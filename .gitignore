@@ -1,3 +1,4 @@
 /target/
 /.idea/
 /log-analytics-hub.iml
+/dependency-reduced-pom.xml

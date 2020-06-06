@@ -20,10 +20,6 @@ public class LogEvent {
     public static final String FIELD_ERROR_MESSAGE = "'%s': '%s' : %s";
     public static final String NULL_FIELD_VALUE_ERROR_MESSAGE = "Field value is null.";
     public static final String FIELD_VALUE_TYPE_INCORRECT_ERROR_MESSAGE = "Expected field value type '%s' but got '%s'.";
-    public static final String IP_DST_ADDR_FIELD = "ip_dst_addr";
-    public static final String IP_SRC_ADDR_FIELD = "ip_src_addr";
-    public static final String IP_DST_PORT_FIELD = "ip_dst_port";
-    public static final String IP_SRC_PORT_FIELD = "ip_src_port";
     public static final String TIMESTAMP_FIELD = "timestamp";
 
     private Map<String, Object> fields = new HashMap<>();
@@ -34,7 +30,9 @@ public class LogEvent {
     }
 
     public void setField(String fieldName, Object value) {
-        fields.put(fieldName, value);
+        if (value != null) {
+            fields.put(fieldName, value);
+        }
     }
 
     public Object getField(String fieldName) {
@@ -90,10 +88,7 @@ public class LogEvent {
 
     public void renameFields(Map<String, String> oldToNewFieldNames) {
         for(Map.Entry<String, String> fieldRename: oldToNewFieldNames.entrySet()) {
-            Object fieldValue = fields.remove( fieldRename.getKey());
-            if (fieldValue != null) {
-                fields.put(fieldRename.getValue(), fieldValue);
-            }
+            setField(fieldRename.getValue(), fields.remove( fieldRename.getKey()));
         }
     }
 
@@ -103,7 +98,7 @@ public class LogEvent {
             Object originalFieldValue = fields.get(fieldName);
             if (originalFieldValue != null) {
                 Object convertedFieldValue = conversion.getValue().apply(originalFieldValue);
-                fields.put(fieldName, convertedFieldValue);
+                setField(fieldName, convertedFieldValue);
             }
         }
 
@@ -112,26 +107,6 @@ public class LogEvent {
     @JsonIgnore
     public long getTimestamp() {
         return (long)getField(TIMESTAMP_FIELD);
-    }
-
-    @JsonIgnore
-    public String getSourceIp() {
-        return (String) getField(IP_SRC_ADDR_FIELD);
-    }
-
-    @JsonIgnore
-    public long getSourcePort() {
-        return  (long)getField(IP_SRC_PORT_FIELD);
-    }
-
-    @JsonIgnore
-    public String getDestinationIp() {
-        return (String) getField(IP_DST_ADDR_FIELD);
-    }
-
-    @JsonIgnore
-    public long getDestinationPort() {
-        return (long) getField(IP_DST_PORT_FIELD);
     }
 
 }
