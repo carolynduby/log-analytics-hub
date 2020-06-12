@@ -19,7 +19,7 @@ public class EnrichmentReferenceFilesTest {
         Map<String, String> paramMap = new HashMap<>();
         paramMap.put(EnrichmentReferenceFiles.CORE_SITE_PROPERTY_NAME, "core-site.xml");
         paramMap.put(EnrichmentReferenceFiles.HDFS_SITE_PROPERTY_NAME, "hdfs-site.xml");
-        paramMap.put(EnrichmentReferenceFiles.ENRICHMENT_GEO_PATH_PROPERTY_NAME, "file:///home/carolynduby/maxmind/GeoLite2-City_20200317/GeoLite2-City.mmdb");
+        paramMap.put(EnrichmentReferenceFiles.ENRICHMENT_GEO_PATH_PROPERTY_NAME, "src/test/resources/maxmind/GeoLite2-City_20200609/GeoLite2-City.mmdb");
 
         return ParameterTool.fromMap(paramMap);
     }

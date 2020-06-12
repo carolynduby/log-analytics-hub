@@ -15,6 +15,7 @@ import com.example.loganalytics.pipeline.profiles.dns.DnsHourProfileAggregator;
 import com.example.loganalytics.profile.ProfileGroup;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -38,7 +39,6 @@ public class ZeekDnsPipeline {
     static final OutputTag<String> errorOutputTag = new OutputTag<String>(PARSER_ERRORS_TAG) {
     };
     private static final Logger LOG = LoggerFactory.getLogger(RawLogParser.class);
-    private static LogSource<String> zeekSource;
 
     private static void outputStreamToKafka(DataStream<String> stream, Properties producerConfig, ParameterTool params, String topicPropKey) {
         //noinspection deprecation
@@ -53,8 +53,6 @@ public class ZeekDnsPipeline {
         LOG.info("Reading config file  {}", configFile);
         ParameterTool params = ParameterTool.fromPropertiesFile(configFile);
         Properties kafkaProperties = LogAnalyticsConfig.readKafkaProperties(params);
-        LogSources logSources = LogSources.create(params);
-        zeekSource = logSources.getSource(LogSources.ZEEK_SOURCE_NAME);
 
         //EnrichmentReferenceHbase hbaseReferenceDataSource = EnrichmentReferenceHbase.create(params);
 
@@ -68,7 +66,7 @@ public class ZeekDnsPipeline {
                 .name("ZeekMessages");
 
         // parse raw event text and convert to structured json
-        SingleOutputStreamOperator<LogEvent> enrichedEvents = rawLogEvents.process(new LogParser()).assignTimestampsAndWatermarks(new LogEventTimestampAssigner(Time.seconds(10)));
+        SingleOutputStreamOperator<LogEvent> enrichedEvents = rawLogEvents.process(new LogParser(params)).assignTimestampsAndWatermarks(new LogEventTimestampAssigner(Time.seconds(10)));
 
 
        // LogEventFieldSpecification fieldSpec = new LogEventFieldSpecification("dns.query", "malicious_ip", Boolean.FALSE);
@@ -91,11 +89,25 @@ public class ZeekDnsPipeline {
     private static class LogParser extends ProcessFunction<String, LogEvent> {
 
         private static final Logger LOG = LoggerFactory.getLogger(LogParser.class);
+        private ParameterTool params;
+        private transient LogSource<String> zeekSource;
+
+        public LogParser(ParameterTool params) {
+            this.params = params;
+        }
 
         @Override
         public void processElement(String logText, Context context, Collector<LogEvent> parsedLogCollector) {
             LOG.debug("Processing log {}", logText);
             parsedLogCollector.collect(zeekSource.ingestEvent(logText));
+        }
+
+        @Override
+        public void open(Configuration configuration) throws Exception {
+            LogSources logSources = LogSources.create(params);
+            this.zeekSource = logSources.getSource(LogSources.ZEEK_SOURCE_NAME);
+
+            super.open(configuration);
         }
     }
 

@@ -1,0 +1,17 @@
+logs.parsed.topic=enrichments
+logs.errors.topic=error
+profiles.topic=profiles
+
+checkpoint.interval=30000
+
+hdfs.coresite=/etc/hadoop/conf.cloudera.hdfs/core-site.xml
+hdfs.hdfssite=/etc/hadoop/conf.cloudera.hdfs/hdfs-site.xml
+
+enrichment.geo.path=src/test/resources/maxmind/GeoLite2-City_20200609/GeoLite2-City.mmdb
+
+kafka.bootstrap.servers=KAFKA_HOST:9092
+kafka.group.id=flink
+
+enrichments.hbaseurl=jdbc:phoenix:PHOENIX_HOST:2181
+enrichments.hbaseuser=admin
+enrichments.hbasepassword=admin

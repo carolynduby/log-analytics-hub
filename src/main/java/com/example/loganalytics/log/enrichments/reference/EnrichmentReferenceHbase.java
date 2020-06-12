@@ -5,11 +5,10 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
 import java.sql.*;
 import java.util.*;
 
-public class EnrichmentReferenceHbase implements EnrichmentReferenceDataSource, Serializable { // should use Flink POJOs instead of serialization
+public class EnrichmentReferenceHbase implements EnrichmentReferenceDataSource {
     private static final long serialVersionUID = 1L;
 
     public static final String HBASE_URL_PROPERTY_NAME = "enrichments.hbaseurl";
