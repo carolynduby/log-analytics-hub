@@ -82,6 +82,7 @@ public class RawLogParser {
         public void open(Configuration configuration) throws Exception {
             LogSources logSources = LogSources.create(params);
             squidSource = logSources.getSource(LogSources.SQUID_SOURCE_NAME);
+            super.open(configuration);
         }
 
         @Override

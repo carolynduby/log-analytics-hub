@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LogEventFieldSpecification {
-
-    public String fieldName;
-    public String featureName;
-    public Boolean isRequired;
+    private String fieldName;
+    private String featureName;
+    private Boolean isRequired;
 }
