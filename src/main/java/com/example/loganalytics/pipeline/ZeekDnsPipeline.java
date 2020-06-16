@@ -74,7 +74,7 @@ public class ZeekDnsPipeline {
        //         new ReferenceDataEnrichmentFunction(hbaseReferenceDataSource, fieldSpec), 50, TimeUnit.SECONDS).assignTimestampsAndWatermarks(new LogEventTimestampAssigner(Time.seconds(10)));
 
         DataStream<ProfileGroup<LogEvent>> dnsProfileEvents = enrichedEvents.keyBy(new LogEventFieldKeySelector(NetworkEvent.IP_SRC_ADDR_FIELD)).window(TumblingEventTimeWindows.of(Time.minutes(1))).aggregate(new DnsMinuteFingerprintAggregator());
-        DataStream<ProfileEvent> hourlyEvents = dnsProfileEvents.keyBy(ProfileGroup::getEntityKey).window(TumblingEventTimeWindows.of(Time.minutes(5))).aggregate(new DnsHourProfileAggregator());
+        DataStream<ProfileEvent> hourlyEvents = dnsProfileEvents.keyBy(ProfileGroup::getEntityKey).window(TumblingEventTimeWindows.of(Time.minutes(60))).aggregate(new DnsHourProfileAggregator());
 
         SingleOutputStreamOperator<String> jsonEnrichedEvents = enrichedEvents.process(new EventToJson<>());
         DataStream<String> parserErrors = jsonEnrichedEvents.getSideOutput(errorOutputTag);
