@@ -3,3 +3,4 @@
 /log-analytics-hub.iml
 /dependency-reduced-pom.xml
 /src/test/resources/maxmind/GeoLite2-City_20200609/
+/src/main/resources/maxmind/GeoLite2-City.mmdb
