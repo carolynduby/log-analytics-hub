@@ -1,6 +1,7 @@
 package com.example.loganalytics.profile;
 
 import com.example.loganalytics.event.ProfileEvent;
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.slf4j.Logger;
@@ -8,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 @ToString(callSuper=true)
 @EqualsAndHashCode(callSuper = true)
-public class AggregatedProfileGroup<PARENT_T> extends ProfileGroup<ProfileGroup<PARENT_T>> {
+public class AggregatedProfileGroup<PARENT_T extends TimeseriesEvent> extends ProfileGroup<ProfileGroup<PARENT_T>> {
     private static final Logger LOG = LoggerFactory.getLogger(AggregatedProfileGroup.class);
     private final ProfileGroup<PARENT_T> parentProfileGroup;
 

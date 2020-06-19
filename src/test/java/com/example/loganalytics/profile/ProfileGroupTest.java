@@ -1,11 +1,14 @@
 package com.example.loganalytics.profile;
 
 import com.example.loganalytics.event.ProfileEvent;
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -17,12 +20,15 @@ public class ProfileGroupTest {
     private static final String NUMERATOR_NAME = "numerator";
     private static final String DENOMINATOR_NAME = "denominator";
 
+    @EqualsAndHashCode(callSuper = true)
     @AllArgsConstructor
     @Data
-    static class ProfileGroupTestEvent {
+    static class ProfileGroupTestEvent extends TimeseriesEvent {
         private String keyField;
         private String stringField;
         private List<String> listField;
+        private long timestamp;
+
     }
 
     @Test
@@ -169,7 +175,7 @@ public class ProfileGroupTest {
     }
 
     private void addEventToProfileGroup(ProfileGroup<ProfileGroupTestEvent> profileGroup, String entityKey, String stringField, List<String> listField) {
-        ProfileGroupTestEvent logEvent = new ProfileGroupTestEvent(entityKey, stringField, listField);
+        ProfileGroupTestEvent logEvent = new ProfileGroupTestEvent(entityKey, stringField, listField, Instant.now().getEpochSecond());
         profileGroup.add(logEvent);
         Assert.assertEquals(entityKey, profileGroup.getEntityKey());
     }

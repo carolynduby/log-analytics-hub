@@ -1,9 +1,11 @@
 package com.example.loganalytics.event;
 
 
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.util.Collection;
@@ -12,10 +14,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.function.Function;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LogEvent {
+public class LogEvent extends TimeseriesEvent {
     public static final String ORIGINAL_STRING_FIELD_NAME = "original_string";
     public static final String FIELD_ERROR_MESSAGE = "'%s': '%s' : %s";
     public static final String NULL_FIELD_VALUE_ERROR_MESSAGE = "Field value is null.";

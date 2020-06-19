@@ -1,12 +1,13 @@
 package com.example.loganalytics.profile;
 
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import lombok.ToString;
 
 import java.util.Optional;
 import java.util.function.Function;
 
 @ToString(callSuper=true)
-public class ProfileGroupMemberAccessor<T> implements Function<ProfileGroup<T>, Double> {
+public class ProfileGroupMemberAccessor<T extends TimeseriesEvent> implements Function<ProfileGroup<T>, Double> {
 
     private final String memberName;
 

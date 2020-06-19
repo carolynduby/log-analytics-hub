@@ -1,6 +1,8 @@
 package com.example.loganalytics.profile;
 
 import com.example.loganalytics.event.*;
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -15,9 +17,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 @ToString
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class ProfileGroup<T> {
+public class ProfileGroup<T extends  TimeseriesEvent> extends TimeseriesEvent {
     private static final Logger LOG = LoggerFactory.getLogger(ProfileGroup.class);
     public static final String RATIO_NUMERATOR_DOES_NOT_EXIST_ERROR_MESSAGE = "Ratio numerator %s does not exist.";
     public static final String RATIO_DENOMINATOR_DOES_NOT_EXIST_ERROR_MESSAGE = "Ratio denominator %s does not exist.";
@@ -28,6 +30,8 @@ public class ProfileGroup<T> {
     private String entityKey = "global";
     private List<ProfileAccumulator<T>> members = new ArrayList<>();
     private List<ProfileRatioResult> ratios = new ArrayList<>();
+    private long beginPeriodTimeStamp = Long.MAX_VALUE;
+    private long endPeriodTimestamp = 0;
 
     public ProfileGroup(String profileGroupName, Function<T, String> entityKeyFieldAccessor) {
         this.profileGroupName = profileGroupName;
@@ -96,6 +100,10 @@ public class ProfileGroup<T> {
 
     public void add(T event) {
         LOG.debug("Adding to group {} event {}", profileGroupName, event.toString());
+
+        endPeriodTimestamp = Math.max(endPeriodTimestamp,event.getEndTimestamp());
+        beginPeriodTimeStamp = Math.min(beginPeriodTimeStamp, event.getBeginTimestamp());
+
         String entityKeyFieldValue = entityKeyFieldAccessor.apply(event);
         if (entityKeyFieldValue != null) {
             entityKey = entityKeyFieldValue;
@@ -107,6 +115,10 @@ public class ProfileGroup<T> {
 
     public void merge(ProfileGroup<T> other) {
         if (this != other) {
+
+            this.endPeriodTimestamp = Math.max(this.endPeriodTimestamp, other.endPeriodTimestamp);
+            this.beginPeriodTimeStamp = Math.min(this.beginPeriodTimeStamp, other.endPeriodTimestamp);
+
             Iterator<ProfileAccumulator<T>> thisMembers = members.iterator();
             Iterator<ProfileAccumulator<T>> otherMembers = other.members.iterator();
 
@@ -120,7 +132,7 @@ public class ProfileGroup<T> {
 
     public ProfileEvent getProfileEventResult() {
         LOG.info("Getting result for profileGroup {}.{}",profileGroupName, entityKey);
-        ProfileEvent profileEvent = new ProfileEvent(profileGroupName, entityKey);
+        ProfileEvent profileEvent = new ProfileEvent(profileGroupName, entityKey, beginPeriodTimeStamp, endPeriodTimestamp);
 
         for(ProfileAccumulator<T> profile : members) {
             profileEvent.setMeasurement(profile.getResultName(), profile.getResult());
@@ -152,4 +164,21 @@ public class ProfileGroup<T> {
     }
 
 
+    @JsonIgnore
+    @Override
+    public long getTimestamp() {
+        return endPeriodTimestamp;
+    }
+
+    @JsonIgnore
+    @Override
+    public long getBeginTimestamp() {
+        return beginPeriodTimeStamp;
+    }
+
+    @JsonIgnore
+    @Override
+    public long getEndTimestamp() {
+        return endPeriodTimestamp;
+    }
 }

@@ -1,16 +1,22 @@
 package com.example.loganalytics.profile;
 
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.time.Instant;
+
 public class ProfileGroupMemberAccessorTest {
 
+    @EqualsAndHashCode(callSuper = true)
     @Data
     @AllArgsConstructor
-    private static class TestEvent {
+    private static class TestEvent extends TimeseriesEvent {
         private final String field;
+        private final long timestamp;
     }
 
     @Test
@@ -19,7 +25,7 @@ public class ProfileGroupMemberAccessorTest {
         ProfileGroup<TestEvent>  profileGroup = new ProfileGroup<>("group_name", TestEvent::getField);
         profileGroup.addCount(profileName);
 
-        profileGroup.add(new TestEvent("A"));
+        profileGroup.add(new TestEvent("A", Instant.now().getEpochSecond()));
 
         ProfileGroupMemberAccessor<TestEvent> accessor = new ProfileGroupMemberAccessor<>(profileName);
         Assert.assertEquals(1.0, accessor.apply(profileGroup), 0.1);

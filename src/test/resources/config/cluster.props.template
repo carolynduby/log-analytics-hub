@@ -9,9 +9,9 @@ hdfs.hdfssite=/etc/hadoop/conf.cloudera.hdfs/hdfs-site.xml
 
 enrichment.geo.path=src/test/resources/maxmind/GeoLite2-City_20200609/GeoLite2-City.mmdb
 
-kafka.bootstrap.servers=ec2-18-144-79-43.us-west-1.compute.amazonaws.com:9092
+kafka.bootstrap.servers=KAFKA_HOST:9092
 kafka.group.id=flink
 
-enrichments.hbaseurl=jdbc:phoenix:ec2-18-144-79-43.us-west-1.compute.amazonaws.com:2181
+enrichments.hbaseurl=jdbc:phoenix:PHOENIX_HOST:2181
 enrichments.hbaseuser=admin
 enrichments.hbasepassword=admin
