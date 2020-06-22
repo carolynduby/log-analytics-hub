@@ -5,6 +5,7 @@ import com.example.loganalytics.log.sources.LogSource;
 import com.example.loganalytics.log.sources.LogSources;
 import com.example.loganalytics.profile.AggregatedProfileGroup;
 import com.example.loganalytics.profile.ProfileGroup;
+import com.example.loganalytics.profile.ProfileGroupTest;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -20,10 +22,10 @@ import java.util.Map;
 public class DnsRequestEventTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(DnsRequestEventTest.class);
-    private static final String NXDOMAIN_EVENT= "{\"dns\": {\"ts\":1588709649.439005,\"uid\":\"Cmnfun1hYw3CQeCVHk\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":28000,\"id.resp_h\":\"172.31.1.6\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":24430,\"query\":\"asia.api.targetingmantra.com\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":1,\"qtype_name\":\"A\",\"rcode\":3,\"rcode_name\":\"NXDOMAIN\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":false,\"Z\":0,\"rejected\":true}}";
+    private static final String NXDOMAIN_EVENT=   "{\"dns\": {\"ts\":1588709649.439005,\"uid\":\"Cmnfun1hYw3CQeCVHk\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":28000,\"id.resp_h\":\"172.31.1.6\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":24430,\"query\":\"asia.api.targetingmantra.com\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":1,\"qtype_name\":\"A\",\"rcode\":3,\"rcode_name\":\"NXDOMAIN\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":false,\"Z\":0,\"rejected\":true}}";
     private static final String VALID_JSON_LINE = "{\"dns\": {\"ts\":1588709647.572953,\"uid\":\"Cwfli23YvRiruLucOh\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":13512,\"id.resp_h\":\"172.31.3.121\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":41874,\"rtt\":0.002012968063354492,\"query\":\"track-front-prod-825173558.us-east-1.elb.amazonaws.com\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":1,\"qtype_name\":\"A\",\"rcode\":0,\"rcode_name\":\"NOERROR\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":true,\"Z\":0,\"answers\":[\"23.21.126.97\",\"50.17.222.11\",\"107.22.253.140\",\"54.243.169.159\",\"23.23.144.131\",\"23.23.222.251\",\"174.129.202.115\",\"23.21.127.5\"],\"TTLs\":[30.0,30.0,30.0,30.0,30.0,30.0,30.0,30.0],\"rejected\":false}}";
-    private static final String MXQUERY_EVENT = "{\"dns\": {\"ts\":1588709797.884982,\"uid\":\"CxsMYoLlK4WHUgbcb\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":17831,\"id.resp_h\":\"172.31.3.121\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":43007,\"query\":\"a2047.dspl.akamai.net\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":15,\"qtype_name\":\"MX\",\"rcode\":0,\"rcode_name\":\"NOERROR\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":false,\"Z\":0,\"rejected\":false}}";
-    private static final String PTRQUERY_EVENT = "{\"dns\": {\"ts\":1588709649.896947,\"uid\":\"C17Cvi3CBuf0H6JZKb\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":3702,\"id.resp_h\":\"172.31.3.121\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":29667,\"query\":\"26.216.233.219.in-addr.arpa\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":12,\"qtype_name\":\"PTR\",\"rcode\":0,\"rcode_name\":\"NOERROR\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":true,\"Z\":0,\"answers\":[\"chipnuts.com\"],\"TTLs\":[70203.0],\"rejected\":false}}";
+    private static final String MXQUERY_EVENT =   "{\"dns\": {\"ts\":1588709648.884982,\"uid\":\"CxsMYoLlK4WHUgbcb\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":17831,\"id.resp_h\":\"172.31.3.121\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":43007,\"query\":\"a2047.dspl.akamai.net\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":15,\"qtype_name\":\"MX\",\"rcode\":0,\"rcode_name\":\"NOERROR\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":false,\"Z\":0,\"rejected\":false}}";
+    private static final String PTRQUERY_EVENT =  "{\"dns\": {\"ts\":1588709649.896947,\"uid\":\"C17Cvi3CBuf0H6JZKb\",\"id.orig_h\":\"172.31.1.6\",\"id.orig_p\":3702,\"id.resp_h\":\"172.31.3.121\",\"id.resp_p\":53,\"proto\":\"udp\",\"trans_id\":29667,\"query\":\"26.216.233.219.in-addr.arpa\",\"qclass\":1,\"qclass_name\":\"C_INTERNET\",\"qtype\":12,\"qtype_name\":\"PTR\",\"rcode\":0,\"rcode_name\":\"NOERROR\",\"AA\":false,\"TC\":false,\"RD\":true,\"RA\":true,\"Z\":0,\"answers\":[\"chipnuts.com\"],\"TTLs\":[70203.0],\"rejected\":false}}";
     private static final String EXPECTED_ENTITY_KEY = "172.31.1.6";
     @Test
     public void testGetters() throws IOException {
@@ -146,7 +148,7 @@ public class DnsRequestEventTest {
         dnsMinuteProfile.add(logEvent);
 
         ProfileEvent profileEvent = dnsMinuteProfile.getProfileEventResult();
-        Assert.assertEquals(expectedMinuteMeasurements, profileEvent.getFields());
+        Assert.assertEquals(expectedMinuteMeasurements, ProfileGroupTest.verifyAndRemoveTimestampsFromActual(profileEvent, logEvent.getTimestamp()));
 
         LOG.info("Aggregating minute {}", dnsMinuteProfile);
         LOG.info("With hour {}", dnsHourProfile);
@@ -154,7 +156,7 @@ public class DnsRequestEventTest {
         LOG.info("Profile before {}", dnsHourProfile);
 
         profileEvent = dnsHourProfile.getProfileEventResult();
-        Assert.assertEquals(expectedHourMeasurements, profileEvent.getFields());
+        Assert.assertEquals(expectedHourMeasurements, ProfileGroupTest.verifyAndRemoveTimestampsFromActual(profileEvent, logEvent.getTimestamp()));
 
     }
 
@@ -165,6 +167,7 @@ public class DnsRequestEventTest {
     private Map<String, Object> initMinuteProfileMeasurements() {
 
         Map<String, Object> measurements = new HashMap<>();
+        measurements.put(LogEvent.ERRORS_FIELD, new HashSet<String>());
         measurements.put(ProfileEvent.PROFILE_TYPE_FIELD_NAME, DnsRequestEvent.DNS_FINGERPRINT_MINUTE_PROFILE);
         measurements.put(ProfileEvent.PROFILE_ENTITY_KEY_FILED_NAME, EXPECTED_ENTITY_KEY);
         measurements.put(getMeasurementMapKey(DnsRequestEvent.DnsFingerprintProfileMeasurements.P1.name()), 1.0);

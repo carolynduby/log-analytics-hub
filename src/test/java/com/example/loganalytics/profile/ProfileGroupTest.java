@@ -1,12 +1,16 @@
 package com.example.loganalytics.profile;
 
+import com.example.loganalytics.event.LogEvent;
 import com.example.loganalytics.event.ProfileEvent;
 import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.commons.lang3.Range;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.*;
@@ -14,11 +18,30 @@ import java.util.function.Predicate;
 
 public class ProfileGroupTest {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ProfileGroupTest.class);
     private static final String PROFILE_GROUP_NAME = "test_group";
     private static final String TEST_ENTITY_KEY = "test_key";
     private static final String TEST_ENTITY_MEASUREMENT = "test_measurement";
     private static final String NUMERATOR_NAME = "numerator";
     private static final String DENOMINATOR_NAME = "denominator";
+
+    public static Map<String, Object> verifyAndRemoveTimestampsFromActual(ProfileEvent profileEvent, long logEventTimestamp) {
+
+        Map<String, Object> actualFields = new HashMap<>(profileEvent.getFields());
+        long now = TimeseriesEvent.getCurrentTime();
+        long begin_period = (Long)actualFields.remove(ProfileEvent.PROFILE_BEGIN_PERIOD_TIMESTAMP);
+        long end_period = (Long)actualFields.remove(ProfileEvent.PROFILE_END_PERIOD_TIMESTAMP);
+        long timestamp = (Long)actualFields.remove(LogEvent.TIMESTAMP_FIELD);
+        Assert.assertTrue(begin_period <= end_period);
+        Assert.assertTrue(begin_period <= timestamp);
+        Assert.assertTrue(end_period <= timestamp);
+        org.apache.commons.lang3.Range<Long> timestampRange = Range.between(logEventTimestamp - 10000, now);
+        LOG.info("Verifying timestamp {} within range {}", begin_period, timestampRange);
+        Assert.assertTrue(timestampRange.contains(begin_period));
+        Assert.assertTrue(timestampRange.contains(end_period));
+        Assert.assertTrue(timestampRange.contains(timestamp));
+        return actualFields;
+    }
 
     @EqualsAndHashCode(callSuper = true)
     @AllArgsConstructor
@@ -175,7 +198,7 @@ public class ProfileGroupTest {
     }
 
     private void addEventToProfileGroup(ProfileGroup<ProfileGroupTestEvent> profileGroup, String entityKey, String stringField, List<String> listField) {
-        ProfileGroupTestEvent logEvent = new ProfileGroupTestEvent(entityKey, stringField, listField, Instant.now().getEpochSecond());
+        ProfileGroupTestEvent logEvent = new ProfileGroupTestEvent(entityKey, stringField, listField, TimeseriesEvent.getCurrentTime());
         profileGroup.add(logEvent);
         Assert.assertEquals(entityKey, profileGroup.getEntityKey());
     }
@@ -183,7 +206,8 @@ public class ProfileGroupTest {
     private void verifyProfileEvent(ProfileGroup<ProfileGroupTestEvent> profileGroup, String entityKey, Double expectedMeasurementValue) {
         Map<String, Object> expectedFields = initFields(PROFILE_GROUP_NAME, TEST_ENTITY_KEY, TEST_ENTITY_MEASUREMENT, expectedMeasurementValue);
         ProfileEvent profileEvent = profileGroup.getProfileEventResult();
-        Assert.assertEquals(expectedFields, profileEvent.getFields());
+        verifyAndRemoveTimestampsFromActual(profileEvent, TimeseriesEvent.getCurrentTime());
+        Assert.assertEquals(expectedFields, verifyAndRemoveTimestampsFromActual(profileEvent, TimeseriesEvent.getCurrentTime()));
         Assert.assertEquals(entityKey, profileEvent.getEntityKey());
     }
 
@@ -193,6 +217,7 @@ public class ProfileGroupTest {
         fields.put(ProfileEvent.PROFILE_TYPE_FIELD_NAME, profileType);
         fields.put(ProfileEvent.PROFILE_ENTITY_KEY_FILED_NAME, entityKey);
         fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(measurementName), measurementValue);
+        fields.put(ProfileEvent.ERRORS_FIELD, new HashSet<String>());
 
         return fields;
     }
@@ -200,7 +225,7 @@ public class ProfileGroupTest {
     private void verifyRatioProfileEvent(ProfileGroup<ProfileGroupTestEvent> profileGroup, Double numerator, Double denominator) {
         Map<String, Object> expectedFields = initRatioFields(TEST_ENTITY_KEY, TEST_ENTITY_MEASUREMENT, numerator, denominator);
         ProfileEvent profileEvent = profileGroup.getProfileEventResult();
-        Assert.assertEquals(expectedFields, profileEvent.getFields());
+        Assert.assertEquals(expectedFields, verifyAndRemoveTimestampsFromActual(profileEvent, TimeseriesEvent.getCurrentTime()));
         Assert.assertEquals(ProfileGroupTest.TEST_ENTITY_KEY, profileEvent.getEntityKey());
     }
 
@@ -212,6 +237,7 @@ public class ProfileGroupTest {
         fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(NUMERATOR_NAME), numerator);
         fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(DENOMINATOR_NAME), denominator);
         fields.put(ProfileEvent.PROFILE_MEASUREMENT_FIELD_NAME_PREFIX.concat(measurementName), numerator / denominator);
+        fields.put(ProfileEvent.ERRORS_FIELD, new HashSet<String>());
 
         return fields;
     }

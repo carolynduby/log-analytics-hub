@@ -2,40 +2,58 @@ package com.example.loganalytics.event;
 
 
 import com.example.loganalytics.event.serialization.TimeseriesEvent;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class LogEvent extends TimeseriesEvent {
     public static final String ORIGINAL_STRING_FIELD_NAME = "original_string";
     public static final String FIELD_ERROR_MESSAGE = "'%s': '%s' : %s";
     public static final String NULL_FIELD_VALUE_ERROR_MESSAGE = "Field value is null.";
     public static final String FIELD_VALUE_TYPE_INCORRECT_ERROR_MESSAGE = "Expected field value type '%s' but got '%s'.";
     public static final String TIMESTAMP_FIELD = "timestamp";
+    public static final String ERRORS_FIELD = "errors";
 
     private Map<String, Object> fields = new HashMap<>();
-    private Collection<String> errors = new HashSet<>();
+    private Collection<String> errors;
+
+    public LogEvent() {
+        initErrorsField();
+    }
 
     public LogEvent(Map<String, Object> fields) {
         this.fields.putAll(fields);
+        //noinspection unchecked
+        this.errors = (Collection<String>)fields.get(ERRORS_FIELD);
+        if (errors == null) {
+            initErrorsField();
+        }
     }
 
+    private void initErrorsField() {
+        this.errors = new HashSet<>();
+        this.fields.put(ERRORS_FIELD, errors);
+    }
+
+    @JsonAnySetter
     public void setField(String fieldName, Object value) {
         if (value != null) {
             fields.put(fieldName, value);
         }
+    }
+
+    @JsonAnyGetter
+    public Map<String, Object> getFields() {
+        return fields;
     }
 
     public Object getField(String fieldName) {

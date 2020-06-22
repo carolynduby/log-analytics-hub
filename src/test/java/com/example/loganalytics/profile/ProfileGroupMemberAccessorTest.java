@@ -25,7 +25,7 @@ public class ProfileGroupMemberAccessorTest {
         ProfileGroup<TestEvent>  profileGroup = new ProfileGroup<>("group_name", TestEvent::getField);
         profileGroup.addCount(profileName);
 
-        profileGroup.add(new TestEvent("A", Instant.now().getEpochSecond()));
+        profileGroup.add(new TestEvent("A", TimeseriesEvent.getCurrentTime()));
 
         ProfileGroupMemberAccessor<TestEvent> accessor = new ProfileGroupMemberAccessor<>(profileName);
         Assert.assertEquals(1.0, accessor.apply(profileGroup), 0.1);

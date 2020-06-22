@@ -1,5 +1,6 @@
 package com.example.loganalytics.event;
 
+import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,7 +18,7 @@ public class ProfileEvent extends LogEvent {
 
 
     public ProfileEvent(String profileType, String entityKey, long beginPeriodTimestamp, long endPeriodTimestamp) {
-        setField(TIMESTAMP_FIELD, Instant.now().toEpochMilli());
+        setField(TIMESTAMP_FIELD, TimeseriesEvent.getCurrentTime());
         setField(PROFILE_TYPE_FIELD_NAME, profileType);
         setField(PROFILE_ENTITY_KEY_FILED_NAME, entityKey);
         setField(PROFILE_BEGIN_PERIOD_TIMESTAMP, beginPeriodTimestamp);

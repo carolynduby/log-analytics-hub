@@ -50,7 +50,7 @@ public class LogEventTest {
     private void verifyFieldValue(String originalStringValue, LogEvent event) {
         Assert.assertEquals(originalStringValue, event.getField(LogEvent.ORIGINAL_STRING_FIELD_NAME));
         Map<String, Object> eventFields = event.getFields();
-        Assert.assertEquals(1, eventFields.size());
+        Assert.assertEquals(2, eventFields.size());
         Assert.assertEquals(originalStringValue, eventFields.get(LogEvent.ORIGINAL_STRING_FIELD_NAME));
         Assert.assertTrue(event.getErrors().isEmpty());
     }
