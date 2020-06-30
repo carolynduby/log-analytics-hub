@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class LogGenerator implements ParallelSourceFunction<String> {
+public abstract class LogGenerator implements ParallelSourceFunction<String> {
 
     /**
      * seconds between generated messages
@@ -16,18 +16,6 @@ public class LogGenerator implements ParallelSourceFunction<String> {
      * Determines if the generator is running or not.
      */
     private final AtomicBoolean isRunning = new AtomicBoolean(true);
-    /**
-     * Number of log entries generated so far.
-     */
-    private final AtomicLong currentLogEntry = new AtomicLong(0);
-    /**
-     * Samples of log entries to generate.   Samples should be compatible with Java String.format.  One parameter is provided for current timestamp.
-     */
-    private final String[] samples;
-
-    public LogGenerator(String[] samples) {
-        this.samples = samples;
-    }
 
     @Override
     public void run(SourceContext<String> sourceContext) throws Exception {
@@ -35,15 +23,21 @@ public class LogGenerator implements ParallelSourceFunction<String> {
 
         while (isRunning.get()) {
             synchronized (sourceContext.getCheckpointLock()) {
-                int logSampleIndex = (int) (currentLogEntry.getAndIncrement() % samples.length);
-                currentTime = currentTime + DELAY_BETWEEN_MESSAGES_MS * logSampleIndex;
-                sourceContext.collect(String.format(samples[logSampleIndex], currentTime));
+                for(String sample : getNextSamples()) {
+                    sourceContext.collect(sample);
+                }
             }
-            if (DELAY_BETWEEN_MESSAGES_MS > 0) {
-                Thread.sleep(DELAY_BETWEEN_MESSAGES_MS);
+
+            long delayBeforeNextMessage = getDelayMillisBeforeNextEvent();
+            if (delayBeforeNextMessage > 0) {
+                Thread.sleep(delayBeforeNextMessage);
             }
         }
     }
+
+    public abstract long getDelayMillisBeforeNextEvent();
+
+    public abstract String[] getNextSamples();
 
     @Override
     public void cancel() {

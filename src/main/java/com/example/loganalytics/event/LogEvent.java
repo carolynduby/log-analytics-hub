@@ -130,4 +130,9 @@ public class LogEvent extends TimeseriesEvent {
         return (long)getField(TIMESTAMP_FIELD);
     }
 
+    @JsonIgnore
+    public Collection<String> getErrors() {
+        return errors;
+    }
+
 }

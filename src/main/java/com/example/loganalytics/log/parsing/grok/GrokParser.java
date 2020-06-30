@@ -5,19 +5,23 @@ import com.example.loganalytics.log.parsing.LogParser;
 import io.krakens.grok.api.Grok;
 import io.krakens.grok.api.GrokCompiler;
 import io.krakens.grok.api.Match;
+import sun.rmi.runtime.Log;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class GrokParser implements LogParser<String> {
     public static final String GROK_MISMATCH_ERROR_MESSAGE = "Event log did not match Grok expression for source type";
     public static final String GROK_PARSER_FEATURE = "GROK_PARSER";
     private final Grok grok;
+    private final Map<String, String> topLevelExpressionRenameMap = new HashMap<>();
 
     public GrokParser(String topLevelExpression, Map<String, String> grokExpressions) {
         GrokCompiler grokCompiler = GrokCompiler.newInstance();
         grokCompiler.registerDefaultPatterns();
         grokCompiler.register(grokExpressions);
         this.grok = grokCompiler.compile(String.format("%%{%s}", topLevelExpression));
+        this.topLevelExpressionRenameMap.put(topLevelExpression, LogEvent.ORIGINAL_STRING_FIELD_NAME);
     }
 
     @Override
@@ -31,7 +35,7 @@ public class GrokParser implements LogParser<String> {
         } else {
             event = new LogEvent(eventFields);
         }
-        event.setField(LogEvent.ORIGINAL_STRING_FIELD_NAME, rawLog);
+        event.renameFields(topLevelExpressionRenameMap);
 
         return event;
     }
