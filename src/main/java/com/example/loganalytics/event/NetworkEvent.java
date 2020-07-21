@@ -9,6 +9,8 @@ public class NetworkEvent extends LogEvent {
     public static final String IP_SRC_ADDR_FIELD = "ip_src_addr";
     public static final String IP_DST_PORT_FIELD = "ip_dst_port";
     public static final String IP_SRC_PORT_FIELD = "ip_src_port";
+    public static final String PROTO_FIELD = "proto";
+    public static final String TRANS_ID_FIELD = "trans_id";
 
     NetworkEvent(Map<String, Object> fields) {
         super(fields);

@@ -26,7 +26,6 @@ public class CountDistinctStringAccumulatorTest extends ProfileAccumulatorTest {
     @Test
     public void testAddNullString() {
         String duplicateString = "duplicate";
-        String nullString = null;
         testCountDistinctString(Arrays.asList(duplicateString, null, duplicateString));
     }
 

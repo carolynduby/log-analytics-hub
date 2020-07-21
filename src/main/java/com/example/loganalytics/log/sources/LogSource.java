@@ -2,6 +2,7 @@ package com.example.loganalytics.log.sources;
 
 import com.example.loganalytics.event.LogEvent;
 import com.example.loganalytics.event.LogEventFieldSpecification;
+import com.example.loganalytics.event.RawLog;
 import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceDataSource;
 import com.example.loganalytics.log.parsing.LogParser;
 import org.slf4j.Logger;
@@ -11,16 +12,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class LogSource<INPUT> {
+public class LogSource {
     private static final Logger LOG = LoggerFactory.getLogger(LogSource.class);
 
-    private final LogParser<INPUT> parser;
+    private final String source;
+    private final LogParser<String> parser;
     /**
      * an ordered list of enrichments to be applied a source
      */
     private final List<FieldEnrichment> enrichments = new ArrayList<>();
 
-    public LogSource(LogParser<INPUT> parser) {
+    public LogSource(String source, LogParser<String> parser) {
+        this.source = source;
         this.parser = parser;
     }
 
@@ -32,8 +35,14 @@ public class LogSource<INPUT> {
         }
     }
 
-    public LogEvent ingestEvent(INPUT rawEvent) {
-        LogEvent event = parser.parse(rawEvent);
+    public LogEvent ingestEvent(String logText) {
+        return ingestEvent(new RawLog(source, logText));
+    }
+
+    public LogEvent ingestEvent(RawLog rawEvent) {
+        LogEvent event = parser.parse(rawEvent.getText());
+        event.setField(LogEvent.SOURCE_FIELD, source);
+        event.addFields(rawEvent.getMetadata());
         enrichEvent(event);
 
         return event;

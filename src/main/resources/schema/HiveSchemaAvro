@@ -1,0 +1,161 @@
+{
+  "name": "LogEvent",
+  "type": "record",
+  "namespace": "com.example.log-analytics",
+  "fields": [
+    {
+      "name": "dns_TTLs",
+      "type": {
+        "type": "array",
+        "items": "float"
+      }
+    },
+    {
+      "name": "dns_uid",
+      "type": "string"
+    },
+    {
+      "name": "ip_dst_port",
+      "type": "int"
+    },
+    {
+      "name": "dns_rcode",
+      "type": "int"
+    },
+    {
+      "name": "dns_rcode_name",
+      "type": "string"
+    },
+    {
+      "name": "dns_answers_filter_ips_city_country_unique_countries",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    },
+    {
+      "name": "source",
+      "type": "string"
+    },
+    {
+      "name": "dns.rejected",
+      "type": "boolean"
+    },
+    {
+      "name": "original_string",
+      "type": "string"
+    },
+    {
+      "name": "ip_dst_addr",
+      "type": "string"
+    },
+    {
+      "name": "dns_query",
+      "type": "string"
+    },
+    {
+      "name": "dns_answers_filter.ips",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    },
+    {
+      "name": "dns_query_domain_breakdown_above_public_suffix",
+      "type": "string"
+    },
+    {
+      "name": "dns_qclass",
+      "type": "int"
+    },
+    {
+      "name": "dns_answers_filter_ips_city_country_unique_cities",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    },
+    {
+      "name": "ip_src_addr",
+      "type": "string"
+    },
+    {
+      "name": "timestamp",
+      "type": "long"
+    },
+    {
+      "name": "dns_Z",
+      "type": "int"
+    },
+    {
+      "name": "dns_rtt",
+      "type": "float"
+    },
+    {
+      "name": "dns_AA",
+      "type": "boolean"
+    },
+    {
+      "name": "dns_proto",
+      "type": "string"
+    },
+    {
+      "name": "dns_answers",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    },
+    {
+      "name": "dns_query_domain_breakdown_second_level_domain",
+      "type": "string"
+    },
+    {
+      "name": "dns_RD",
+      "type": "boolean"
+    },
+    {
+      "name": "dns_query_domain_breakdown_public_suffix",
+      "type": "string"
+    },
+    {
+      "name": "dns_qtype",
+      "type": "int"
+    },
+    {
+      "name": "dns_qclass_name",
+      "type": "string"
+    },
+    {
+      "name": "dns_TC",
+      "type": "boolean"
+    },
+    {
+      "name": "dns_RA",
+      "type": "boolean"
+    },
+    {
+      "name": "ip_src_port",
+      "type": "int"
+    },
+    {
+      "name": "dns_qtype_name",
+      "type": "string"
+    },
+    {
+      "name": "dns_query_domain_breakdown_top_level_domain",
+      "type": "string"
+    },
+    {
+      "name": "dns_trans_id",
+      "type": "int"
+    },
+    {
+      "name": "errors",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    }
+  ]
+}

@@ -5,23 +5,27 @@ import com.example.loganalytics.event.serialization.TimeseriesEvent;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.function.Function;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class LogEvent extends TimeseriesEvent {
-    public static final String ORIGINAL_STRING_FIELD_NAME = "original_string";
+    public static final String ORIGINAL_STRING_FIELD = "original_string";
     public static final String FIELD_ERROR_MESSAGE = "'%s': '%s' : %s";
     public static final String NULL_FIELD_VALUE_ERROR_MESSAGE = "Field value is null.";
     public static final String FIELD_VALUE_TYPE_INCORRECT_ERROR_MESSAGE = "Expected field value type '%s' but got '%s'.";
     public static final String TIMESTAMP_FIELD = "timestamp";
     public static final String ERRORS_FIELD = "errors";
+    public static final String TRANSFORMATION = "transformation";
+    public static final String SOURCE_FIELD = "source";
+    public static final String METADATA_DATASET_FIELD = "metadata.dataset";
 
     private Map<String, Object> fields = new HashMap<>();
     private Collection<String> errors;
@@ -48,6 +52,12 @@ public class LogEvent extends TimeseriesEvent {
     public void setField(String fieldName, Object value) {
         if (value != null) {
             fields.put(fieldName, value);
+        }
+    }
+
+    public void addFields(Map<String, Object> fieldValues) {
+        for(Map.Entry<String, Object> fieldValue : fieldValues.entrySet()) {
+            setField(fieldValue.getKey(), fieldValue.getValue());
         }
     }
 
@@ -113,13 +123,17 @@ public class LogEvent extends TimeseriesEvent {
         }
     }
 
-    public void convertFieldTypes(Map<String, Function<Object, Object>> typeConversions) {
-        for(Map.Entry<String, Function<Object, Object>> conversion : typeConversions.entrySet()) {
-            String fieldName = conversion.getKey();
+    public void transformFields(Map<String, Function<Object, Object>> transformations) {
+        for(Map.Entry<String, Function<Object, Object>> transformation : transformations.entrySet()) {
+            String fieldName = transformation.getKey();
             Object originalFieldValue = fields.get(fieldName);
             if (originalFieldValue != null) {
-                Object convertedFieldValue = conversion.getValue().apply(originalFieldValue);
-                setField(fieldName, convertedFieldValue);
+                try {
+                    Object newFieldValue = transformation.getValue().apply(originalFieldValue);
+                    setField(fieldName, newFieldValue);
+                } catch (Exception e) {
+                    reportError(fieldName, TRANSFORMATION, e.getMessage());
+                }
             }
         }
 
@@ -131,8 +145,17 @@ public class LogEvent extends TimeseriesEvent {
     }
 
     @JsonIgnore
+    public String getSource() {
+        return (String)getField(SOURCE_FIELD);
+    }
+
+    @JsonIgnore
     public Collection<String> getErrors() {
         return errors;
+    }
+
+    public void removeField(String fieldName) {
+        fields.remove(fieldName);
     }
 
 }

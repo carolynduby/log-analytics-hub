@@ -1,7 +1,5 @@
 package com.example.loganalytics.pipeline.generators;
 
-import sun.rmi.runtime.Log;
-
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 

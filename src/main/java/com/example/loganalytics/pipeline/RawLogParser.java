@@ -1,13 +1,13 @@
 package com.example.loganalytics.pipeline;
 
 import com.example.loganalytics.event.LogEvent;
+import com.example.loganalytics.event.RawLog;
 import com.example.loganalytics.event.serialization.JsonFormat;
 import com.example.loganalytics.event.serialization.LogFormatException;
-import com.example.loganalytics.log.sources.LogSource;
 import com.example.loganalytics.log.sources.LogSources;
 import com.example.loganalytics.pipeline.config.LogAnalyticsConfig;
 import com.example.loganalytics.pipeline.enrichments.ReferenceDataEnrichmentFunction;
-import com.example.loganalytics.pipeline.generators.SquidGenerator;
+import com.example.loganalytics.pipeline.serialization.RawLogSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
@@ -16,6 +16,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
@@ -48,9 +49,13 @@ public class RawLogParser {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        DataStream<String> rawLogEvents = env
-                .addSource(new SquidGenerator())
-                .name("SquidGenerator");
+        //DataStream<String> rawLogEvents = env
+             //   .addSource(new SquidGenerator())
+              //  .name("SquidGenerator");
+
+        DataStream<RawLog> rawLogEvents = env
+                .addSource(new FlinkKafkaConsumer<>("raw-messages", new RawLogSchema(), kafkaProperties))
+                .name("MultiSensorIngest");
 
         // parse raw event text and convert to structured json
         SingleOutputStreamOperator<LogEvent> logEventStream = rawLogEvents.process(new LogParser(params));
@@ -68,30 +73,35 @@ public class RawLogParser {
         env.execute("Squid log parser");
     }
 
-    private static class LogParser extends ProcessFunction<String, LogEvent> {
+    private static class LogParser extends ProcessFunction<RawLog, LogEvent> {
 
         private static final Logger LOG = LoggerFactory.getLogger(LogParser.class);
-        private transient LogSource<String> squidSource;
         private final ParameterTool params;
+        private transient LogSources logSources;
 
         public LogParser(ParameterTool params) {
             this.params = params;
         }
 
         @Override
-        public void open(Configuration configuration) throws Exception {
-            LogSources logSources = LogSources.create(params);
-            squidSource = logSources.getSource(LogSources.SQUID_SOURCE_NAME);
-            super.open(configuration);
+        public void processElement(RawLog logEvent, Context context, Collector<LogEvent> parsedLogCollector) {
+            String logText = logEvent.getText();
+            String logSource = logEvent.getSource();
+
+            if (logEvent.getSource() == null ) {
+                logSource = LogSources.ZEEK_SOURCE_NAME;
+            }
+            LOG.debug("Processing {}  log {}", logSource, logText);
+            parsedLogCollector.collect(logSources.getSource(logSource).ingestEvent(logText));
         }
 
         @Override
-        public void processElement(String logText, Context context, Collector<LogEvent> parsedLogCollector) {
-            LOG.info("Processing log {}", logText);
-            parsedLogCollector.collect(squidSource.ingestEvent(logText));
-         }
-    }
+        public void open(Configuration configuration) throws Exception {
+            this.logSources = LogSources.create(params);
 
+            super.open(configuration);
+        }
+    }
     private static class LogEventToJson extends ProcessFunction<LogEvent, String> {
 
         private static final Logger LOG = LoggerFactory.getLogger(LogEventToJson.class);

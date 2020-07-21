@@ -1,8 +1,8 @@
 package com.example.loganalytics.event;
 
-import com.example.loganalytics.log.parsing.ParserTest;
 import com.example.loganalytics.log.sources.LogSource;
 import com.example.loganalytics.log.sources.LogSources;
+import com.example.loganalytics.log.sources.LogSourcesTest;
 import com.example.loganalytics.profile.AggregatedProfileGroup;
 import com.example.loganalytics.profile.ProfileGroup;
 import com.example.loganalytics.profile.ProfileGroupTest;
@@ -30,7 +30,7 @@ public class DnsRequestEventTest {
     @Test
     public void testGetters() throws IOException {
 
-        LogSource<String> jsonSource = ParserTest.createLogSource(LogSources.ZEEK_SOURCE_NAME);
+        LogSource jsonSource = LogSourcesTest.createLogSource(LogSources.ZEEK_SOURCE_NAME);
         DnsRequestEvent dnsRequestEvent = new DnsRequestEvent(jsonSource.ingestEvent(VALID_JSON_LINE));
         Assert.assertEquals("172.31.1.6", dnsRequestEvent.getSourceIp());
         Assert.assertEquals(13512, dnsRequestEvent.getSourcePort());
@@ -53,7 +53,7 @@ public class DnsRequestEventTest {
 
     @Test
     public void testDnsFingerprintProfile() throws IOException {
-        LogSource<String> jsonSource = ParserTest.createLogSource(LogSources.ZEEK_SOURCE_NAME);
+        LogSource jsonSource = LogSourcesTest.createLogSource(LogSources.ZEEK_SOURCE_NAME);
         ProfileGroup<LogEvent> dnsMinuteProfile = DnsRequestEvent.createDnsFingerPrintMinuteProfileGroup();
         AggregatedProfileGroup<LogEvent> dnsHourProfile = DnsRequestEvent.createDnsFingerPrintHourProfileGroup();
 
@@ -142,7 +142,7 @@ public class DnsRequestEventTest {
 
     }
 
-    private void verifyAddEventToProfile(LogSource<String> jsonSource, String eventText, ProfileGroup<LogEvent> dnsMinuteProfile, Map<String, Object> expectedMinuteMeasurements,
+    private void verifyAddEventToProfile(LogSource jsonSource, String eventText, ProfileGroup<LogEvent> dnsMinuteProfile, Map<String, Object> expectedMinuteMeasurements,
                                          AggregatedProfileGroup<LogEvent> dnsHourProfile, Map<String, Object> expectedHourMeasurements) {
         LogEvent logEvent = jsonSource.ingestEvent(eventText);
         dnsMinuteProfile.add(logEvent);

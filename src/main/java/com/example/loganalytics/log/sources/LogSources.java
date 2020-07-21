@@ -8,6 +8,8 @@ import com.example.loganalytics.log.enrichments.IpCityCountrySetEnrichment;
 import com.example.loganalytics.log.enrichments.IpGeoEnrichment;
 import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceDomainTransformations;
 import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceFiles;
+import com.example.loganalytics.log.parsing.LogParser;
+import com.example.loganalytics.log.parsing.delimitedtext.DelimitedTextParser;
 import com.example.loganalytics.log.parsing.conversion.TypeConversion;
 import com.example.loganalytics.log.parsing.grok.GrokParser;
 import com.example.loganalytics.log.parsing.json.JsonParser;
@@ -18,18 +20,19 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class LogSources {
     public static final String SQUID_SOURCE_NAME = "squid";
     public static final String ZEEK_SOURCE_NAME = "zeek";
+    public static final String BROTEXT_SOURCE_NAME = "brotext";
 
-    private final Map<String, LogSource<String>> sources = new HashMap<>();
+    private final Map<String, LogSource> sources = new HashMap<>();
 
     LogSources(IpGeoEnrichment ipGeoEnrichment, IpCityCountrySetEnrichment ipCityCountrySetEnrichment) {
         createSquidGrokParser(ipGeoEnrichment);
         createZeekParser(ipCityCountrySetEnrichment);
+        createBroTextParser(ipCityCountrySetEnrichment);
     }
 
     public static LogSources create(ParameterTool params) throws IOException {
@@ -47,10 +50,46 @@ public class LogSources {
         String squidGrokExpr = "%{NUMBER:timestamp}[^0-9]*%{INT:elapsed} %{IP:ip_src_addr} %{WORD:action}/%{NUMBER:code} %{NUMBER:bytes} %{WORD:method} %{NOTSPACE:url}[^0-9]*(%{IP:ip_dst_addr})?";
         grokMap.put(squidExpName, squidGrokExpr);
 
-        LogSource<String> squidSource = new LogSource<>(new GrokParser(squidExpName, grokMap));
-        sources.put(SQUID_SOURCE_NAME, squidSource);
-        squidSource.configureFieldEnrichment(NetworkEvent.IP_DST_ADDR_FIELD, IpGeoEnrichment.GEOCODE_FEATURE, ipGeoEnrichment);
+        GrokParser squidGrokParser = new GrokParser(squidExpName, grokMap);
+        squidGrokParser.addFieldTransformation(LogEvent.TIMESTAMP_FIELD, TypeConversion.stringTimestampToEpoch);
 
+        LogSource squidSource = new LogSource(SQUID_SOURCE_NAME, squidGrokParser);
+        sources.put(SQUID_SOURCE_NAME, squidSource);
+
+        squidSource.configureFieldEnrichment(NetworkEvent.IP_DST_ADDR_FIELD, IpGeoEnrichment.GEOCODE_FEATURE, ipGeoEnrichment);
+    }
+
+    private void createBroTextParser(IpCityCountrySetEnrichment ipCityCountrySetEnrichment) {
+        String[] fieldNames = new String []{ LogEvent.TIMESTAMP_FIELD, DnsRequestEvent.UID_FIELD,
+                NetworkEvent.IP_SRC_ADDR_FIELD, NetworkEvent.IP_SRC_PORT_FIELD,
+                NetworkEvent.IP_DST_ADDR_FIELD, NetworkEvent.IP_DST_PORT_FIELD,
+                NetworkEvent.PROTO_FIELD, NetworkEvent.TRANS_ID_FIELD,
+                DnsRequestEvent.DNS_QUERY_FIELD, "dns.qclass", "dns.qclass_name",
+                DnsRequestEvent.DNS_QUERY_TYPE_ID, DnsRequestEvent.DNS_QUERY_TYPE,
+                "dns.rcode", DnsRequestEvent.DNS_RESPONSE_CODE_NAME,
+                "dns.AA", "dns.TC", "dns.RD", "dns.RA", "dns.Z", DnsRequestEvent.DNS_ANSWERS,
+                "dns.TTLs", "dns.rejected" };
+
+        LogParser<String> broTextParser = new DelimitedTextParser(fieldNames);
+        broTextParser.addFieldTransformation(LogEvent.TIMESTAMP_FIELD, TypeConversion.stringTimestampToEpoch);
+        broTextParser.addFieldTransformation(NetworkEvent.IP_SRC_PORT_FIELD, TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation(NetworkEvent.IP_DST_PORT_FIELD, TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation(NetworkEvent.TRANS_ID_FIELD, TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation("dns.qclass", TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation(DnsRequestEvent.DNS_QUERY_TYPE_ID, TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation("dns.rcode", TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation("dns.AA", TypeConversion.stringToBoolean);
+        broTextParser.addFieldTransformation("dns.TC", TypeConversion.stringToBoolean);
+        broTextParser.addFieldTransformation("dns.RD", TypeConversion.stringToBoolean);
+        broTextParser.addFieldTransformation("dns.RA", TypeConversion.stringToBoolean);
+        broTextParser.addFieldTransformation("dns.Z", TypeConversion.stringToLong);
+        broTextParser.addFieldTransformation(DnsRequestEvent.DNS_ANSWERS, TypeConversion.splitStringList);
+        broTextParser.addFieldTransformation("dns.TTLs", TypeConversion.splitDoubleList);
+        broTextParser.addFieldTransformation("dns.rejected", TypeConversion.stringToBoolean);
+
+        LogSource broTextSource = new LogSource(BROTEXT_SOURCE_NAME, broTextParser);
+        sources.put(BROTEXT_SOURCE_NAME, broTextSource);
+        addDnsEnrichments(ipCityCountrySetEnrichment, broTextSource);
     }
 
     private final Predicate<LogEvent> dnsQueryIsDomainName = logEvent -> {
@@ -62,31 +101,35 @@ public class LogSources {
 
     private void createZeekParser(IpCityCountrySetEnrichment ipCityCountrySetEnrichment) {
 
-        Map<String, String> fieldRename = new HashMap<>();
-        fieldRename.put("dns[\\\"id.orig_h\\\"]", NetworkEvent.IP_SRC_ADDR_FIELD);
-        fieldRename.put("dns[\\\"id.orig_p\\\"]", NetworkEvent.IP_SRC_PORT_FIELD);
-        fieldRename.put("dns[\\\"id.resp_h\\\"]", NetworkEvent.IP_DST_ADDR_FIELD);
-        fieldRename.put("dns[\\\"id.resp_p\\\"]", NetworkEvent.IP_DST_PORT_FIELD);
-        fieldRename.put("dns.ts", LogEvent.TIMESTAMP_FIELD);
+        LogParser<String> jsonParser = new JsonParser();
+        jsonParser.addFieldRename("dns[\\\"id.orig_h\\\"]", NetworkEvent.IP_SRC_ADDR_FIELD);
+        jsonParser.addFieldRename("dns[\\\"id.orig_p\\\"]", NetworkEvent.IP_SRC_PORT_FIELD);
+        jsonParser.addFieldRename("dns[\\\"id.resp_h\\\"]", NetworkEvent.IP_DST_ADDR_FIELD);
+        jsonParser.addFieldRename("dns[\\\"id.resp_p\\\"]", NetworkEvent.IP_DST_PORT_FIELD);
+        jsonParser.addFieldRename("dns.ts", LogEvent.TIMESTAMP_FIELD);
 
-        Map<String, Function<Object, Object>> fieldTypeConversions = new HashMap<>();
-        fieldTypeConversions.put(NetworkEvent.IP_SRC_PORT_FIELD, TypeConversion.bigDecimalToLong);
-        fieldTypeConversions.put(NetworkEvent.IP_DST_PORT_FIELD, TypeConversion.bigDecimalToLong);
-        fieldTypeConversions.put(LogEvent.TIMESTAMP_FIELD, TypeConversion.bigDecimalToEpoch);
+        jsonParser.addFieldTransformation(NetworkEvent.IP_SRC_PORT_FIELD, TypeConversion.bigDecimalToLong);
+        jsonParser.addFieldTransformation(NetworkEvent.IP_DST_PORT_FIELD, TypeConversion.bigDecimalToLong);
+        jsonParser.addFieldTransformation(LogEvent.TIMESTAMP_FIELD, TypeConversion.bigDecimalToEpoch);
 
-        LogSource<String> zeekSource = new LogSource<>(new JsonParser(fieldRename, fieldTypeConversions));
+
+        LogSource zeekSource = new LogSource(ZEEK_SOURCE_NAME, jsonParser);
         sources.put(ZEEK_SOURCE_NAME, zeekSource);
 
-        zeekSource.configureFieldEnrichment(DnsRequestEvent.DNS_QUERY, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN,
+        addDnsEnrichments(ipCityCountrySetEnrichment, zeekSource);
+    }
+
+    private void addDnsEnrichments(IpCityCountrySetEnrichment ipCityCountrySetEnrichment, LogSource logSource) {
+        logSource.configureFieldEnrichment(DnsRequestEvent.DNS_QUERY_FIELD, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN,
                 EnrichmentReferenceDomainTransformations.domainBreakdown, String.class, dnsQueryIsDomainName);
         FilterListEnrichment<String> getIps = new FilterListEnrichment<>(DnsRequestEvent.DNS_FILTERED_IP_ENDING, o -> InetAddressValidator.getInstance().isValidInet4Address(o));
-        zeekSource.configureFieldEnrichment(DnsRequestEvent.DNS_ANSWERS, FilterListEnrichment.FILTER_FEATURE_NAME, getIps,
+        logSource.configureFieldEnrichment(DnsRequestEvent.DNS_ANSWERS, FilterListEnrichment.FILTER_FEATURE_NAME, getIps,
                 List.class, null);
-        zeekSource.configureFieldEnrichment(DnsRequestEvent.DNS_IP_ANSWERS, IpCityCountrySetEnrichment.CITY_COUNTRY_FEATURE_NAME, ipCityCountrySetEnrichment,
+        logSource.configureFieldEnrichment(DnsRequestEvent.DNS_IP_ANSWERS, IpCityCountrySetEnrichment.CITY_COUNTRY_FEATURE_NAME, ipCityCountrySetEnrichment,
                 List.class, null);
     }
 
-    public LogSource<String> getSource(String logSourceName) {
+    public LogSource getSource(String logSourceName) {
         return sources.get(logSourceName);
     }
 

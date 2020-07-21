@@ -5,10 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 
 public class JsonFormat {
+    private final  ObjectMapper mapper = new ObjectMapper();
 
     public String convert(Object event) throws LogFormatException {
-        ObjectMapper mapper = new ObjectMapper();
-
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             mapper.writeValue(outputStream, event);
@@ -17,4 +16,5 @@ public class JsonFormat {
             throw new LogFormatException(e);
         }
     }
+
 }

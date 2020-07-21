@@ -4,7 +4,6 @@ import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
 
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class LogGenerator implements ParallelSourceFunction<String> {
 

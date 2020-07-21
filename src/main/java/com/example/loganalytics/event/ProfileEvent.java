@@ -5,8 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.time.Instant;
-
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ProfileEvent extends LogEvent {

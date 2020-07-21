@@ -20,8 +20,8 @@ public class LogEventTest {
         final String originalStringValue = "raw log message one";
 
         final LogEvent event = new LogEvent();
-        Assert.assertNull(event.getField(LogEvent.ORIGINAL_STRING_FIELD_NAME));
-        event.setField(LogEvent.ORIGINAL_STRING_FIELD_NAME, originalStringValue);
+        Assert.assertNull(event.getField(LogEvent.ORIGINAL_STRING_FIELD));
+        event.setField(LogEvent.ORIGINAL_STRING_FIELD, originalStringValue);
 
         verifyFieldValue(originalStringValue, event);
     }
@@ -31,7 +31,7 @@ public class LogEventTest {
         final String originalStringValue = "raw log message two";
         final Map<String, Object> fields = new HashMap<>();
 
-        fields.put(LogEvent.ORIGINAL_STRING_FIELD_NAME, originalStringValue);
+        fields.put(LogEvent.ORIGINAL_STRING_FIELD, originalStringValue);
 
         final LogEvent event = new LogEvent(fields);
         verifyFieldValue(originalStringValue, event);
@@ -48,10 +48,10 @@ public class LogEventTest {
     }
 
     private void verifyFieldValue(String originalStringValue, LogEvent event) {
-        Assert.assertEquals(originalStringValue, event.getField(LogEvent.ORIGINAL_STRING_FIELD_NAME));
+        Assert.assertEquals(originalStringValue, event.getField(LogEvent.ORIGINAL_STRING_FIELD));
         Map<String, Object> eventFields = event.getFields();
         Assert.assertEquals(2, eventFields.size());
-        Assert.assertEquals(originalStringValue, eventFields.get(LogEvent.ORIGINAL_STRING_FIELD_NAME));
+        Assert.assertEquals(originalStringValue, eventFields.get(LogEvent.ORIGINAL_STRING_FIELD));
         Assert.assertTrue(event.getErrors().isEmpty());
     }
 

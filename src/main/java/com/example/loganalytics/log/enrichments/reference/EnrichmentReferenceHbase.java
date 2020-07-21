@@ -9,7 +9,6 @@ import java.sql.*;
 import java.util.*;
 
 public class EnrichmentReferenceHbase implements EnrichmentReferenceDataSource {
-    private static final long serialVersionUID = 1L;
 
     public static final String HBASE_URL_PROPERTY_NAME = "enrichments.hbaseurl";
     public static final String HBASE_USER_PROPERTY_NAME = "enrichments.hbaseuser";

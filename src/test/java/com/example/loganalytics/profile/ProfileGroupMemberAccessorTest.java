@@ -7,8 +7,6 @@ import lombok.EqualsAndHashCode;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.time.Instant;
-
 public class ProfileGroupMemberAccessorTest {
 
     @EqualsAndHashCode(callSuper = true)

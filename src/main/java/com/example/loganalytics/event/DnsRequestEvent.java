@@ -6,6 +6,7 @@ import com.example.loganalytics.log.enrichments.reference.EnrichmentReferenceDom
 import com.example.loganalytics.profile.AggregatedProfileGroup;
 import com.example.loganalytics.profile.ProfileGroup;
 import com.example.loganalytics.profile.ProfileGroupMemberAccessor;
+import com.google.common.collect.Lists;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -13,7 +14,7 @@ import java.util.function.Predicate;
 public class DnsRequestEvent extends NetworkEvent {
 
     // field names for DNS Requests
-    public static final String DNS_QUERY = "dns.query";
+    public static final String DNS_QUERY_FIELD = "dns.query";
     public static final String DNS_ANSWERS = "dns.answers";
     public static final String DNS_FILTERED_IP_ENDING = "ips";
     public static final String DNS_IP_ANSWERS = String.join(".", DNS_ANSWERS, FilterListEnrichment.FILTER_FEATURE_NAME, DNS_FILTERED_IP_ENDING);
@@ -21,17 +22,20 @@ public class DnsRequestEvent extends NetworkEvent {
 
     public static final String DNS_ANSWER_CITIES = String.join(".", DNS_IP_ANSWERS, IpCityCountrySetEnrichment.CITY_COUNTRY_FEATURE_NAME, IpCityCountrySetEnrichment.UNIQUE_CITIES_FIELD_ENDING); //dns.answers.filter.ips.city_country.unique_cities
     public static final String DNS_ANSWER_COUNTRIES = String.join(".", DNS_IP_ANSWERS, IpCityCountrySetEnrichment.CITY_COUNTRY_FEATURE_NAME, IpCityCountrySetEnrichment.UNIQUE_COUNTRIES_FIELD_ENDING);
-    public static final String DNS_QUERY_TOP_LEVEL_DOMAIN = String.join(".", DNS_QUERY, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN, EnrichmentReferenceDomainTransformations.TOP_LEVEL_DOMAIN_ENDING);
-    public static final String DNS_QUERY_SECOND_LEVEL_DOMAIN = String.join(".", DNS_QUERY, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN, EnrichmentReferenceDomainTransformations.SECOND_LEVEL_DOMAIN_ENDING);
+    public static final String DNS_QUERY_TOP_LEVEL_DOMAIN = String.join(".", DNS_QUERY_FIELD, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN, EnrichmentReferenceDomainTransformations.TOP_LEVEL_DOMAIN_ENDING);
+    public static final String DNS_QUERY_SECOND_LEVEL_DOMAIN = String.join(".", DNS_QUERY_FIELD, EnrichmentReferenceDomainTransformations.DOMAIN_BREAKDOWN, EnrichmentReferenceDomainTransformations.SECOND_LEVEL_DOMAIN_ENDING);
     public static final String DNS_QUERY_TYPE = "dns.qtype_name";
 
     public static final String DNS_FINGERPRINT_PROFILE = "dns.fingerprint";
     public static final String DNS_FINGERPRINT_MINUTE_PROFILE = DNS_FINGERPRINT_PROFILE.concat(".").concat("minute");
     public static final String DNS_FINGERPRINT_HOUR_PROFILE = DNS_FINGERPRINT_PROFILE.concat(".").concat("hour");
+    public static final String UID_FIELD = "dns.uid";
+    public static final String DNS_QUERY_TYPE_ID = "dns.qtype";
+    public static final String DNS_RCODE_FIELD = "dns.rcode";
 
-    private static final LogEventFieldAccessor<String> DNS_QUERY_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_QUERY, DNS_FINGERPRINT_MINUTE_PROFILE);
+    private static final LogEventFieldAccessor<String> DNS_QUERY_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_QUERY_FIELD, DNS_FINGERPRINT_MINUTE_PROFILE);
     private static final LogEventFieldAccessor<String> DNS_QUERY_TYPE_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_QUERY_TYPE, DNS_FINGERPRINT_MINUTE_PROFILE);
-    private static final LogEventFieldAccessor<String> IP_SRC_ADDR_FIELD_ACCESSOR = new LogEventFieldAccessor<>(IP_SRC_ADDR_FIELD, DNS_FINGERPRINT_MINUTE_PROFILE);
+    private static final LogEventFieldConcatenate IP_SRC_ADDR_FIELD_ACCESSOR = new LogEventFieldConcatenate(Lists.newArrayList(IP_SRC_ADDR_FIELD, LogEvent.METADATA_DATASET_FIELD), DNS_FINGERPRINT_MINUTE_PROFILE);
     private static final LogEventFieldAccessor<String> IP_DST_ADDR_FIELD_ACCESSOR = new LogEventFieldAccessor<>(IP_DST_ADDR_FIELD, DNS_FINGERPRINT_MINUTE_PROFILE);
     private static final LogEventFieldAccessor<String> DNS_QUERY_TOP_LEVEL_DOMAIN_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_QUERY_TOP_LEVEL_DOMAIN, DNS_FINGERPRINT_MINUTE_PROFILE);
     private static final LogEventFieldAccessor<String> DNS_QUERY_SECOND_LEVEL_DOMAIN_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_QUERY_SECOND_LEVEL_DOMAIN, DNS_FINGERPRINT_MINUTE_PROFILE);
@@ -39,6 +43,14 @@ public class DnsRequestEvent extends NetworkEvent {
     private static final LogEventFieldAccessor<List<String>> DNS_ANSWER_CITIES_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_ANSWER_CITIES, DNS_FINGERPRINT_MINUTE_PROFILE);
     private static final LogEventFieldAccessor<List<String>> DNS_ANSWER_COUNTRIES_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_ANSWER_COUNTRIES, DNS_FINGERPRINT_MINUTE_PROFILE);
     private static final LogEventFieldAccessor<List<String>> DNS_IP_ANSWERS_FIELD_ACCESSOR = new LogEventFieldAccessor<>(DNS_IP_ANSWERS, DNS_FINGERPRINT_MINUTE_PROFILE);
+    public static final String DNS_QCLASS_FIELD = "dns.qclass";
+    public static final String DNS_QCLASS_NAME_FIELD = "dns.qclass_name";
+    public static final String DNS_AA_FIELD = "dns.AA";
+    public static final String DNS_TC_FIELD = "dns.TC";
+    public static final String DNS_RD_FIELD = "dns.RD";
+    public static final String DNS_RA_FIELD = "dns.RA";
+    public static final String DNS_Z_FIELD = "dns.Z";
+    public static final String DNS_REJECTED_FIELD = "dns.rejected";
 
     public enum DnsFingerprintProfileMeasurements {
         P1,
@@ -125,7 +137,7 @@ public class DnsRequestEvent extends NetworkEvent {
 
 
     public String getQuery() {
-        return (String)getField(DNS_QUERY);
+        return (String)getField(DNS_QUERY_FIELD);
     }
 
     public String getResponseCode() {
