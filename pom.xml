@@ -31,7 +31,7 @@ under the License.
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <flink.version>1.10.0-csa1.2.0.0-SNAPSHOT</flink.version>
-        <hadoop.version>3.1.1.7.1.1.0-565</hadoop.version>
+        <hadoop.version>3.2.4</hadoop.version>
         <phoenix.version>5.0.0.7.1.1.0-565</phoenix.version>
         <guava.version>23.0</guava.version>
         <java.version>1.8</java.version>
